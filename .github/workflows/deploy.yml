@@ -1,0 +1,122 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - dev
+      - stable
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy
+        required: true
+        default: dev
+        type: choice
+        options:
+          - dev
+          - stable
+
+concurrency:
+  group: frontend-${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-dev:
+    name: Deploy dev
+    runs-on: ubuntu-latest
+    environment: dev
+    if: github.ref_name == 'dev' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'dev')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type and Svelte check
+        run: npm run check
+
+      - name: Build
+        run: npm run build
+        env:
+          PUBLIC_AUTH_LOGIN_URL: ${{ vars.PUBLIC_AUTH_LOGIN_URL }}
+          PUBLIC_AUTH_NEW_PASSWORD_URL: ${{ vars.PUBLIC_AUTH_NEW_PASSWORD_URL }}
+          PUBLIC_AUTH_REFRESH_URL: ${{ vars.PUBLIC_AUTH_REFRESH_URL }}
+          PUBLIC_AUTH_LOGOUT_URL: ${{ vars.PUBLIC_AUTH_LOGOUT_URL }}
+          PUBLIC_CHARACTERS_URL: ${{ vars.PUBLIC_CHARACTERS_URL }}
+          PUBLIC_USERS_URL: ${{ vars.PUBLIC_USERS_URL }}
+          PUBLIC_RPG_SESSIONS_URL: ${{ vars.PUBLIC_RPG_SESSIONS_URL }}
+          PUBLIC_AWS_REGION: ${{ vars.PUBLIC_AWS_REGION }}
+          PUBLIC_WEBSOCKET_STAGE: ${{ vars.PUBLIC_WEBSOCKET_STAGE }}
+          PUBLIC_WEBSOCKET_API_ID: ${{ vars.PUBLIC_WEBSOCKET_API_ID }}
+          PUBLIC_WEBSOCKET_URL: ${{ vars.PUBLIC_WEBSOCKET_URL }}
+          VITE_WS_API_URL: ${{ vars.VITE_WS_API_URL }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Deploy dev with Serverless Framework
+        run: npx serverless deploy --stage dev
+        env:
+          SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}
+
+  deploy-stable:
+    name: Deploy stable
+    runs-on: ubuntu-latest
+    environment: stable
+    if: github.ref_name == 'stable' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'stable')
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type and Svelte check
+        run: npm run check
+
+      - name: Build
+        run: npm run build
+        env:
+          PUBLIC_AUTH_LOGIN_URL: ${{ vars.PUBLIC_AUTH_LOGIN_URL }}
+          PUBLIC_AUTH_NEW_PASSWORD_URL: ${{ vars.PUBLIC_AUTH_NEW_PASSWORD_URL }}
+          PUBLIC_AUTH_REFRESH_URL: ${{ vars.PUBLIC_AUTH_REFRESH_URL }}
+          PUBLIC_AUTH_LOGOUT_URL: ${{ vars.PUBLIC_AUTH_LOGOUT_URL }}
+          PUBLIC_CHARACTERS_URL: ${{ vars.PUBLIC_CHARACTERS_URL }}
+          PUBLIC_USERS_URL: ${{ vars.PUBLIC_USERS_URL }}
+          PUBLIC_RPG_SESSIONS_URL: ${{ vars.PUBLIC_RPG_SESSIONS_URL }}
+          PUBLIC_AWS_REGION: ${{ vars.PUBLIC_AWS_REGION }}
+          PUBLIC_WEBSOCKET_STAGE: ${{ vars.PUBLIC_WEBSOCKET_STAGE }}
+          PUBLIC_WEBSOCKET_API_ID: ${{ vars.PUBLIC_WEBSOCKET_API_ID }}
+          PUBLIC_WEBSOCKET_URL: ${{ vars.PUBLIC_WEBSOCKET_URL }}
+          VITE_WS_API_URL: ${{ vars.VITE_WS_API_URL }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ vars.AWS_REGION }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Deploy stable with Serverless Framework
+        run: npx serverless deploy --stage stable
+        env:
+          SERVERLESS_ACCESS_KEY: ${{ secrets.SERVERLESS_ACCESS_KEY }}

@@ -1,0 +1,20 @@
+export type CharacterCard = {
+  userId: string;
+  characterId: string;
+  name: string;
+  rpgSystem?: string;
+  sessionId?: string;
+  occupation?: string;
+  age?: number;
+  characteristics?: Record<string, unknown>;
+  skills?: Record<string, unknown>;
+  backstory?: Record<string, unknown>;
+  inventory?: unknown;
+  notes?: string;
+  avatarKey?: string | null;
+  avatarUrl?: string | null;
+  avatarContentType?: string | null;
+  avatarUpdatedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
