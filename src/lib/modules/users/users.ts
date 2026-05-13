@@ -1,30 +1,24 @@
-import { apiClient, isAPIError } from "$lib/modules/FetchModule/APIClient";
+import { apiClient } from "$lib/modules/ApiModule/client";
+import { mapAPIError } from "$lib/modules/ApiModule/errors";
+import { expectArrayField } from "$lib/modules/ApiModule/response";
 import { usersAPI } from "$lib/modules/repository";
 import { type UsersResponse, type GetUsersOptions } from "./userType";
 
 export async function getUsers(options: GetUsersOptions = {}) {
-  let data: UsersResponse;
-
   try {
-    data = await apiClient.get<UsersResponse>(usersAPI, {
-      token: "id",
+    const data = await apiClient.get<UsersResponse>(usersAPI, {
       query: options,
       fallbackErrorMessage: "Nie udało się pobrać użytkowników.",
     });
+
+    const users = expectArrayField(data, "users", "Backend zwrócił nieprawidłową listę użytkowników.");
+    return {
+      users,
+      nextCursor: data.nextCursor ?? null,
+    };
   } catch (error) {
-    if (isAPIError(error) && (error.status === 401 || error.status === 403)) {
-      throw new Error("Brak uprawnień do pobrania listy użytkowników.");
-    }
-
-    throw error;
+    return mapAPIError(error, {
+      unauthorized: "Brak uprawnień do pobrania listy użytkowników.",
+    });
   }
-
-  if (!data?.users) {
-    throw new Error("Backend zwrócił nieprawidłową listę użytkowników.");
-  }
-
-  return {
-    users: data.users,
-    nextCursor: data.nextCursor ?? null,
-  };
 }

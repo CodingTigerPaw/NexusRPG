@@ -1,4 +1,4 @@
-import type { CharacterCard } from '$lib/features/characters/types';
+import type { CharacterCard } from '$lib/modules/charactersModule/charactersTypes';
 import { vtmAbilityGroups, vtmAttributeGroups } from '$lib/modules/charactersModule/character-builder/data';
 import {
   buildNumericOptions,

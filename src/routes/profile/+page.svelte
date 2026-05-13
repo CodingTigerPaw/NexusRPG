@@ -11,13 +11,12 @@
     CardTitle
   } from '$lib/components/ui/card';
   import {
-    decodeJwtPayload,
-    getCurrentUser,
-    getStoredAuthSession,
-    logout as logoutUser,
-    type AuthSession,
-    type CognitoUser
-  } from '$lib/modules/auth';
+    getCurrentUser
+  } from '$lib/modules/AuthModule/user';
+  import { getStoredAuthSession } from '$lib/modules/AuthModule/session';
+  import { decodeJwtPayload } from '$lib/modules/AuthModule/tokens';
+  import { logout as logoutUser } from '$lib/modules/AuthModule/service';
+  import type { AuthSession, CognitoUser } from '$lib/modules/AuthModule/authTypes/session';
 
   let session = $state<AuthSession | null>(null);
   let user = $state<CognitoUser | null>(null);

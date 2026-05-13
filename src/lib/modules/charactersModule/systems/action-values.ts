@@ -1,4 +1,4 @@
-import type { CharacterCard } from '$lib/modules/charactersTypes';
+import type { CharacterCard } from "$lib/modules/charactersModule/charactersTypes";
 
 export type CharacterOption = {
   id: string;
@@ -7,7 +7,7 @@ export type CharacterOption = {
 };
 
 export function normalizeSystemText(system: string | undefined) {
-  return (system ?? '').toLowerCase();
+  return (system ?? "").toLowerCase();
 }
 
 export function matchesCocSystem(system: string | undefined) {
@@ -20,21 +20,21 @@ export function matchesVtmSystem(system: string | undefined) {
 
 export function readCharacterNumber(
   character: CharacterCard | null | undefined,
-  paths: string[]
+  paths: string[],
 ) {
   if (!character) {
     return 0;
   }
 
   for (const path of paths) {
-    const value = path.split('.').reduce<unknown>((current, segment) => {
-      if (!current || typeof current !== 'object' || Array.isArray(current)) {
+    const value = path.split(".").reduce<unknown>((current, segment) => {
+      if (!current || typeof current !== "object" || Array.isArray(current)) {
         return undefined;
       }
 
       return (current as Record<string, unknown>)[segment];
     }, character);
-    const numericValue = typeof value === 'number' ? value : Number(value);
+    const numericValue = typeof value === "number" ? value : Number(value);
 
     if (Number.isFinite(numericValue)) {
       return numericValue;
@@ -44,21 +44,27 @@ export function readCharacterNumber(
   return 0;
 }
 
-export function buildNumericOptions(source: Record<string, unknown> | undefined) {
+export function buildNumericOptions(
+  source: Record<string, unknown> | undefined,
+) {
   return Object.entries(source ?? {})
     .map(([key, value]) => ({
       id: key,
       label: key,
-      value: typeof value === 'number' ? value : Number(value)
+      value: typeof value === "number" ? value : Number(value),
     }))
     .filter((option) => Number.isFinite(option.value))
-    .sort((left, right) => left.label.localeCompare(right.label, 'pl'));
+    .sort((left, right) => left.label.localeCompare(right.label, "pl"));
 }
 
 export function readVtmHunger(character: CharacterCard | null | undefined) {
   return Math.max(
     0,
-    readCharacterNumber(character, ['characteristics.hunger', 'characteristics.Głód', 'skills.Hunger'])
+    readCharacterNumber(character, [
+      "characteristics.hunger",
+      "characteristics.Głód",
+      "skills.Hunger",
+    ]),
   );
 }
 
@@ -70,9 +76,9 @@ export function buildVtmNotation(pool: number, hunger: number) {
   const clampedHunger = Math.min(hunger, pool);
   const standardDice = Math.max(0, pool - clampedHunger);
   const terms = [
-    standardDice > 0 ? `${standardDice}d10#2aa3ff` : '',
-    clampedHunger > 0 ? `${clampedHunger}d10#c1121f` : ''
+    standardDice > 0 ? `${standardDice}d10#2aa3ff` : "",
+    clampedHunger > 0 ? `${clampedHunger}d10#c1121f` : "",
   ].filter(Boolean);
 
-  return terms.join(' + ');
+  return terms.join(" + ");
 }

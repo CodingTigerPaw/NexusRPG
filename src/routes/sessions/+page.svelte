@@ -2,6 +2,7 @@
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
   import { Button } from '$lib/components/ui/button';
+  import { Spinner } from '$lib/components/ui/spinner';
   import {
     Card,
     CardContent,
@@ -9,7 +10,8 @@
     CardHeader,
     CardTitle
   } from '$lib/components/ui/card';
-  import { getCurrentUser, hasRole } from '$lib/modules/auth';
+  import { getCurrentUser } from '$lib/modules/AuthModule/user';
+  import { hasRole } from '$lib/modules/AuthModule/roles';
   import { appRoles } from '$lib/modules/navigation';
   import {
     formatRpgSessionName,
@@ -99,11 +101,12 @@
     </div>
 
     {#if isLoading}
-      <Card class="border-border/80 bg-card/95">
-        <CardContent class="p-6">
+      <div class="flex justify-center py-8">
+        <div class="flex items-center gap-3">
+          <Spinner size="sm" label="Pobieranie sesji RPG..." />
           <p class="text-sm text-muted-foreground">Pobieranie sesji RPG...</p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     {:else if errorMessage}
       <Card class="border-destructive/40 bg-destructive/10">
         <CardContent class="p-6">
@@ -153,7 +156,12 @@
       {#if nextCursor}
         <div class="flex justify-center">
           <Button type="button" variant="secondary" disabled={isLoadingMore} onclick={loadMore}>
-            {isLoadingMore ? 'Pobieranie...' : 'Pokaż więcej'}
+            {#if isLoadingMore}
+              <Spinner size="sm" class="mr-2 text-secondary-foreground" label="Pobieranie kolejnych sesji..." />
+              Pobieranie...
+            {:else}
+              Pokaż więcej
+            {/if}
           </Button>
         </div>
       {/if}

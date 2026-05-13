@@ -1,5 +1,7 @@
-import { getAccessToken, refreshAuthSession } from '$lib/modules/auth';
+import { getAccessToken } from '$lib/modules/AuthModule/session';
+import { refreshAuthSession } from '$lib/modules/AuthModule/service';
 import type { CharacterCard } from '$lib/modules/characters';
+import type { MapPosition, SessionMap, SessionMapToken } from '$lib/features/maps/types';
 import type {
   DiceRollDieResult,
   DiceRollMechanicsResult,
@@ -39,17 +41,53 @@ export type CharacterSheetLiveEvent = {
     | 'characterSheet.updated'
     | 'characterSheet.deleted'
     | 'diceRoll.created'
+    | 'sessionMap.created'
+    | 'sessionMap.updated'
+    | 'sessionMap.deleted'
+    | 'sessionMap.tokenCreated'
+    | 'sessionMap.tokenUpdated'
+    | 'sessionMap.tokenDragging'
+    | 'sessionMap.tokenMoved'
+    | 'sessionMap.tokenDeleted'
     | string;
   characterSheet?: CharacterCard & {
     deletedAt?: string;
   };
   diceRoll?: BackendDiceRollPayload;
   message?: string;
+  sessionId?: string;
+  mapId?: string;
+  actorUserId?: string;
+  clientMutationId?: string;
+  updatedAt?: string;
+  map?: SessionMap;
+  token?: SessionMapToken;
+  tokenId?: string;
+  position?: MapPosition;
+  rotation?: number;
+  version?: number;
+  movedByUserId?: string;
+  clientMoveId?: string;
+  deletedAt?: string;
 };
 
 export type CharacterSheetSubscription = {
   userId: string;
   characterId: string;
+};
+
+export type SessionMapSubscription = {
+  sessionId: string;
+  mapId: string;
+};
+
+export type MapTokenDragPreviewPayload = {
+  sessionId: string;
+  mapId: string;
+  tokenId: string;
+  position: MapPosition;
+  clientMoveId: string;
+  phase?: 'dragging';
 };
 
 type CharacterSheetLiveSocketOptions = {
@@ -75,6 +113,7 @@ const defaultMaxConnectionAgeMs =
 export class CharacterSheetLiveSocket {
   private socket: WebSocket | null = null;
   private activeSubscription: CharacterSheetSubscription | null = null;
+  private activeMapSubscription: SessionMapSubscription | null = null;
   private manuallyClosed = false;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private plannedReconnectTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -143,6 +182,7 @@ export class CharacterSheetLiveSocket {
       this.options.onStatusChange?.('connected');
       this.schedulePlannedReconnect();
       this.sendSubscription('subscribeCharacterSheet', this.activeSubscription);
+      this.sendMapSubscription('subscribeSessionMap', this.activeMapSubscription);
     });
 
     socket.addEventListener('message', (event) => {
@@ -196,6 +236,18 @@ export class CharacterSheetLiveSocket {
     this.sendSubscription('subscribeCharacterSheet', subscription);
   }
 
+  subscribeSessionMap(subscription: SessionMapSubscription | null) {
+    const previousSubscription = this.activeMapSubscription;
+    this.activeMapSubscription = subscription;
+
+    if (this.socket?.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    this.sendMapSubscription('unsubscribeSessionMap', previousSubscription);
+    this.sendMapSubscription('subscribeSessionMap', subscription);
+  }
+
   sendDiceRoll(
     diceRoll: DiceRollResult,
     metadata: { characterId?: string | null; characterName?: string | null } = {}
@@ -225,8 +277,16 @@ export class CharacterSheetLiveSocket {
       targetName: diceRoll.targetName ?? diceRoll.mechanics?.checkName ?? null,
       rollContext: diceRoll.rollContext ?? 'generic',
       visibility: diceRoll.visibility ?? (diceRoll.hidden ? 'gmOnly' : 'public'),
-      characterId: metadata.characterId ?? null,
-      characterName: metadata.characterName ?? null
+      characterId: metadata.characterId ?? diceRoll.characterId ?? null,
+      characterName: metadata.characterName ?? diceRoll.characterName ?? null
+    });
+  }
+
+  sendMapTokenDragPreview(payload: MapTokenDragPreviewPayload) {
+    return this.sendJson({
+      action: 'broadcastMapTokenDrag',
+      phase: 'dragging',
+      ...payload
     });
   }
 
@@ -237,9 +297,11 @@ export class CharacterSheetLiveSocket {
 
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.sendSubscription('unsubscribeCharacterSheet', this.activeSubscription);
+      this.sendMapSubscription('unsubscribeSessionMap', this.activeMapSubscription);
     }
 
     this.activeSubscription = null;
+    this.activeMapSubscription = null;
     this.socket?.close(1000, 'Leaving live RPG session');
     this.socket = null;
     this.options.onStatusChange?.('closed');
@@ -300,6 +362,23 @@ export class CharacterSheetLiveSocket {
         action,
         userId: subscription.userId,
         characterId: subscription.characterId
+      })
+    );
+  }
+
+  private sendMapSubscription(
+    action: 'subscribeSessionMap' | 'unsubscribeSessionMap',
+    subscription: SessionMapSubscription | null
+  ) {
+    if (!subscription || this.socket?.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    this.socket.send(
+      JSON.stringify({
+        action,
+        sessionId: subscription.sessionId,
+        mapId: subscription.mapId
       })
     );
   }

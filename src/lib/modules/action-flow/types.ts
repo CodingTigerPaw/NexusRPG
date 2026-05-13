@@ -1,15 +1,15 @@
-import type { CharacterCard } from '$lib/modules/charactersTypes';
+import type { CharacterCard } from "$lib/modules/charactersModule/charactersTypes";
 
-export type FlowStatus = 'idle' | 'running' | 'halted' | 'completed' | 'failed';
+export type FlowStatus = "idle" | "running" | "halted" | "completed" | "failed";
 
 export type FlowEventType =
-  | 'FLOW_STARTED'
-  | 'STEP_STARTED'
-  | 'STEP_COMPLETED'
-  | 'FLOW_HALTED'
-  | 'FLOW_COMPLETED'
-  | 'FLOW_FAILED'
-  | 'COMMAND_RECORDED';
+  | "FLOW_STARTED"
+  | "STEP_STARTED"
+  | "STEP_COMPLETED"
+  | "FLOW_HALTED"
+  | "FLOW_COMPLETED"
+  | "FLOW_FAILED"
+  | "COMMAND_RECORDED";
 
 export type FlowEvent = {
   type: FlowEventType;

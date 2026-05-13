@@ -10,6 +10,7 @@ import type {
   CharacterSheetFieldDefinition,
   ResolvedCharacterSheet
 } from './types';
+import { parseCharacterNotes } from '../notes';
 
 const sheetDefinitions: CharacterSheetDefinition[] = getCharacterSystemSheetDefinitions();
 
@@ -98,6 +99,7 @@ export function resolveCharacterSheet(
     systemName: definition.systemName,
     characterName: character.name,
     avatarUrl: character.avatarUrl ?? null,
+    notes: parseCharacterNotes(character.notes),
     derivedStats: (definition.derivedStats ?? []).map((derivedStat) => ({
       ...derivedStat,
       value: formatValue(derivedValues[derivedStat.id], derivedStat)

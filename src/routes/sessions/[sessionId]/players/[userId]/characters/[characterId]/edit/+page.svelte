@@ -14,10 +14,14 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { Textarea } from '$lib/components/ui/textarea';
-  import { getCurrentUser, hasRole } from '$lib/modules/auth';
+  import { getCurrentUser } from '$lib/modules/AuthModule/user';
+  import { hasRole } from '$lib/modules/AuthModule/roles';
   import {
+    deleteSessionParticipantCharacterAvatar,
     getUserCharacters,
     updateSessionParticipantCharacter,
+    uploadSessionParticipantCharacterAvatar,
+    type CharacterAvatarUploadPayload,
     type CharacterCard,
     type CharacterUpdatePayload
   } from '$lib/modules/characters';
@@ -33,14 +37,20 @@
     description: string;
   };
 
+  const allowedAvatarTypes = ['image/jpeg', 'image/png', 'image/webp'] as const;
+  const maxAvatarBytes = 2 * 1024 * 1024;
+
   let session = $state<RpgSession | null>(null);
   let character = $state<CharacterCard | null>(null);
   let currentUserId = $state('');
   let isAdminUser = $state(false);
   let isLoading = $state(true);
   let isSaving = $state(false);
+  let isUploadingAvatar = $state(false);
+  let isDeletingAvatar = $state(false);
   let errorMessage = $state('');
   let editorMessage = $state('');
+  let avatarMessage = $state('');
   let editName = $state('');
   let editOccupation = $state('');
   let editAge = $state('');
@@ -142,6 +152,94 @@
     editBackstory = JSON.stringify(character.backstory ?? {}, null, 2);
     editInventory = JSON.stringify(character.inventory ?? [], null, 2);
     disciplinePowers = readDisciplinePowers(character.skills);
+    avatarMessage = '';
+  }
+
+  function isAllowedAvatarType(contentType: string): contentType is CharacterAvatarUploadPayload['contentType'] {
+    return allowedAvatarTypes.includes(contentType as CharacterAvatarUploadPayload['contentType']);
+  }
+
+  function readFileAsDataUrl(file: File) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener('load', () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+          return;
+        }
+
+        reject(new Error('Nie udało się odczytać pliku avatara.'));
+      });
+      reader.addEventListener('error', () => reject(new Error('Nie udało się odczytać pliku avatara.')));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleAvatarFileChange(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    avatarMessage = '';
+
+    if (!file || !character || !session || !playerUserId || !canManageSession) {
+      return;
+    }
+
+    if (!isAllowedAvatarType(file.type)) {
+      avatarMessage = 'Obsługiwane formaty avatara to JPEG, PNG albo WebP.';
+      input.value = '';
+      return;
+    }
+
+    if (file.size > maxAvatarBytes) {
+      avatarMessage = 'Awatar może mieć maksymalnie 2 MB.';
+      input.value = '';
+      return;
+    }
+
+    isUploadingAvatar = true;
+
+    try {
+      character = await uploadSessionParticipantCharacterAvatar(
+        session.sessionId,
+        playerUserId,
+        character.characterId,
+        {
+          fileName: file.name,
+          contentType: file.type,
+          imageBase64: await readFileAsDataUrl(file)
+        }
+      );
+      fillEditor(character);
+      avatarMessage = 'Awatar został zapisany.';
+    } catch (error) {
+      avatarMessage = error instanceof Error ? error.message : 'Nie udało się wgrać awatara.';
+    } finally {
+      isUploadingAvatar = false;
+      input.value = '';
+    }
+  }
+
+  async function deleteAvatar() {
+    if (!character?.avatarUrl || !session || !playerUserId || !canManageSession || isDeletingAvatar) {
+      return;
+    }
+
+    isDeletingAvatar = true;
+    avatarMessage = '';
+
+    try {
+      character = await deleteSessionParticipantCharacterAvatar(
+        session.sessionId,
+        playerUserId,
+        character.characterId
+      );
+      fillEditor(character);
+      avatarMessage = 'Awatar został usunięty.';
+    } catch (error) {
+      avatarMessage = error instanceof Error ? error.message : 'Nie udało się usunąć awatara.';
+    } finally {
+      isDeletingAvatar = false;
+    }
   }
 
   function readDisciplinePowers(skills: Record<string, unknown> | undefined) {
@@ -387,6 +485,56 @@
                 {editorMessage}
               </div>
             {/if}
+
+            <div class="rounded-md border bg-background/40 p-4">
+              <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div class="flex items-center gap-4">
+                  <div class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-muted text-xl font-semibold text-muted-foreground">
+                    {#if character.avatarUrl}
+                      <img
+                        class="h-full w-full object-cover"
+                        src={character.avatarUrl}
+                        alt={`Avatar postaci ${character.name}`}
+                      />
+                    {:else}
+                      {character.name.slice(0, 1).toUpperCase()}
+                    {/if}
+                  </div>
+
+                  <div>
+                    <p class="text-sm font-medium">Avatar postaci</p>
+                    <p class="mt-1 text-sm text-muted-foreground">
+                      JPEG, PNG albo WebP. Maksymalnie 2 MB.
+                    </p>
+                    {#if avatarMessage}
+                      <p class="mt-2 text-sm text-muted-foreground">{avatarMessage}</p>
+                    {/if}
+                  </div>
+                </div>
+
+                <div class="flex flex-col gap-2 sm:items-end">
+                  <Label for="session-edit-character-avatar" class="sr-only">Plik avatara</Label>
+                  <Input
+                    id="session-edit-character-avatar"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    disabled={isSaving || isUploadingAvatar || isDeletingAvatar}
+                    onchange={handleAvatarFileChange}
+                  />
+
+                  {#if character.avatarUrl}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isSaving || isUploadingAvatar || isDeletingAvatar}
+                      onclick={deleteAvatar}
+                    >
+                      {isDeletingAvatar ? 'Usuwanie...' : 'Usuń avatar'}
+                    </Button>
+                  {/if}
+                </div>
+              </div>
+            </div>
 
             <div class="grid gap-4 md:grid-cols-3">
               <div class="space-y-2 md:col-span-2">

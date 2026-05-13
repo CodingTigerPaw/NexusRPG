@@ -15,6 +15,7 @@
   import { Label } from '$lib/components/ui/label';
   import { resolveCharacterSheet } from '$lib/modules/charactersModule/character-sheet';
   import {
+    deleteCharacter,
     deleteCharacterAvatar,
     getCharacter,
     uploadCharacterAvatar,
@@ -32,8 +33,10 @@
   let isLoading = $state(true);
   let isUploadingAvatar = $state(false);
   let isDeletingAvatar = $state(false);
+  let isDeletingCharacter = $state(false);
   let errorMessage = $state('');
   let avatarMessage = $state('');
+  let deleteMessage = $state('');
 
   const characterId = $derived(page.params.characterId);
   const sheet = $derived(character ? resolveCharacterSheet(character) : null);
@@ -143,6 +146,46 @@
       isDeletingAvatar = false;
     }
   }
+
+  async function deleteCurrentCharacter() {
+    if (!character || isDeletingCharacter) {
+      return;
+    }
+
+    if (character.sessionId) {
+      alert(
+        `Nie można usunąć postaci "${character.name}", ponieważ jest przypisana do sesji "${sessionName || character.sessionId}". Najpierw usuń ją z uczestników sesji, aby nie zostawić niespójnych danych.`
+      );
+      return;
+    }
+
+    const confirmed = confirm(
+      `Usunąć postać "${character.name}"? Tej operacji nie można cofnąć.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    isDeletingCharacter = true;
+    deleteMessage = '';
+
+    try {
+      if (character.avatarUrl || character.avatarKey) {
+        // Avatar ma osobny endpoint, bo to on zna szczegóły czyszczenia obiektu S3.
+        // Usunięcie pliku wykonujemy przed skasowaniem karty, żeby nie stracić identyfikatora zasobu.
+        await deleteCharacterAvatar(character.characterId);
+      }
+
+      await deleteCharacter(character.characterId);
+      goto('/characters');
+    } catch (error) {
+      deleteMessage =
+        error instanceof Error ? error.message : 'Nie udało się usunąć postaci.';
+    } finally {
+      isDeletingCharacter = false;
+    }
+  }
 </script>
 
 <svelte:head>
@@ -162,7 +205,20 @@
         {/if}
       </div>
 
-      <Button type="button" variant="outline" onclick={() => goto('/characters')}>Wroc do listy</Button>
+      <div class="flex flex-wrap items-center gap-2">
+        {#if character}
+          <Button
+            type="button"
+            variant="outline"
+            class="border-destructive/50 text-destructive hover:bg-destructive/10"
+            disabled={isDeletingCharacter}
+            onclick={deleteCurrentCharacter}
+          >
+            {isDeletingCharacter ? 'Usuwanie...' : 'Usuń postać'}
+          </Button>
+        {/if}
+        <Button type="button" variant="outline" onclick={() => goto('/characters')}>Wroc do listy</Button>
+      </div>
     </div>
 
     {#if isLoading}
@@ -178,6 +234,14 @@
         </CardContent>
       </Card>
     {:else if character && sheet}
+      {#if deleteMessage}
+        <Card class="border-destructive/40 bg-destructive/10">
+          <CardContent class="p-4">
+            <p class="text-sm text-destructive-foreground">{deleteMessage}</p>
+          </CardContent>
+        </Card>
+      {/if}
+
       <Card class="border-border/80 bg-card/95">
         <CardHeader>
           <CardTitle>Awatar</CardTitle>

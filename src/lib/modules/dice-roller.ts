@@ -50,6 +50,8 @@ export type DiceRollResult = {
   actorLabel?: string;
   subjectLabel?: string | null;
   targetName?: string;
+  characterId?: string | null;
+  characterName?: string | null;
   rollContext?: 'playerCharacter' | 'npc' | 'generic';
   visibility?: 'public' | 'gmOnly';
   createdAt: string;
@@ -308,24 +310,36 @@ const successLabels: Record<string, string> = {
   fumble: 'Fumble'
 };
 
+function formatSuccessCount(value: number) {
+  if (value === 1) {
+    return '1 sukces';
+  }
+
+  if (value > 1 && value < 5) {
+    return `${value} sukcesy`;
+  }
+
+  return `${value} sukcesów`;
+}
+
 export function formatDiceMechanics(roll: DiceRollResult) {
   if (!roll.mechanics) {
     return '';
   }
 
   if (roll.mechanics.systemId === 'vtm') {
+    const successes = formatSuccessCount(roll.mechanics.successes ?? 0);
     const flags = [
       roll.mechanics.messyCritical ? 'Brutalny sukces' : '',
       roll.mechanics.bestialFailure ? 'Bestialska porażka' : ''
     ].filter(Boolean);
-    const pool =
-      typeof roll.mechanics.pool === 'number'
-        ? ` / pula ${roll.mechanics.pool}, głód ${roll.mechanics.hunger ?? 0}`
-        : '';
+    const details = [
+      typeof roll.mechanics.pool === 'number' ? `pula ${roll.mechanics.pool}` : '',
+      typeof roll.mechanics.hunger === 'number' ? `głód ${roll.mechanics.hunger}` : '',
+      ...flags
+    ].filter(Boolean);
 
-    return `${roll.mechanics.checkName}: ${roll.mechanics.successes ?? 0} sukces(y)${pool}${
-      flags.length ? ` / ${flags.join(', ')}` : ''
-    }`;
+    return [successes, ...details].join(' · ');
   }
 
   const level = roll.mechanics.successLevel
@@ -334,5 +348,5 @@ export function formatDiceMechanics(roll: DiceRollResult) {
   const target =
     typeof roll.mechanics.target === 'number' ? ` / próg ${roll.mechanics.target}` : '';
 
-  return `${roll.mechanics.checkName}: ${level ?? 'wynik nierozstrzygnięty'}${target}`;
+  return `${level ?? 'wynik nierozstrzygnięty'}${target}`;
 }

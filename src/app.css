@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Amarante&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -37,5 +39,83 @@
   button,
   input {
     font: inherit;
+  }
+}
+
+@layer components {
+  .app-title-brand {
+    font-family: 'Amarante', theme('fontFamily.serif');
+  }
+
+  .ui-fade-in {
+    animation: ui-fade-in 140ms ease-out both;
+  }
+
+  .ui-popover-in {
+    transform-origin: top left;
+    animation: ui-popover-in 160ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .ui-slide-up-in {
+    animation: ui-slide-up-in 170ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .ui-dialog-in {
+    animation: ui-dialog-in 180ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes ui-fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ui-popover-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.35rem) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes ui-slide-up-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.45rem) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes ui-dialog-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 0.5rem)) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ui-fade-in,
+  .ui-popover-in,
+  .ui-slide-up-in,
+  .ui-dialog-in {
+    animation: none;
   }
 }

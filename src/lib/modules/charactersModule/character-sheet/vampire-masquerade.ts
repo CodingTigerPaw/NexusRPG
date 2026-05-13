@@ -97,7 +97,7 @@ export const vampireMasqueradeSheetDefinition = {
   sections: [
     {
       id: "identity",
-      title: "Tozsamosc",
+      title: "Podstawowe",
       groups: [
         {
           id: "basic",
@@ -167,7 +167,7 @@ export const vampireMasqueradeSheetDefinition = {
     },
     {
       id: "bloodParameters",
-      title: "Parametry krwi i statystyki pochodne",
+      title: "Pochodne",
       groups: [
         {
           id: "derived",

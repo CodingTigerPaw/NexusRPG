@@ -1,14 +1,15 @@
-import { apiClient, isAPIError } from "$lib/modules/FetchModule/APIClient";
+import { apiClient } from "$lib/modules/ApiModule/client";
+import { mapAPIError } from "$lib/modules/ApiModule/errors";
+import { expectField } from "$lib/modules/ApiModule/response";
 import type {
   CharacterAvatarUploadPayload,
   CharacterCreatePayload,
-  CharacterErrorResponse,
   CharacterMutationResponse,
   CharacterSheetResponse,
   CharacterSheetsResponse,
   CharacterUpdatePayload,
   GetCharactersOptions,
-} from "$lib/modules/charactersTypes";
+} from "$lib/modules/charactersModule/charactersTypes";
 import {
   charactersAPI,
   rpgSessionsAPI,
@@ -22,7 +23,7 @@ export type {
   CharacterSheetsResponse,
   CharacterUpdatePayload,
   GetCharactersOptions,
-} from "$lib/modules/charactersTypes";
+} from "$lib/modules/charactersModule/charactersTypes";
 
 function buildUserCharactersUrl(userId: string) {
   return `${usersAPI}/${encodeURIComponent(userId)}/character-sheets`;
@@ -44,96 +45,82 @@ function buildSessionParticipantCharacterUrl(
   return `${rpgSessionsAPI}/${encodeURIComponent(sessionId)}/players/${encodeURIComponent(userId)}/character-sheets/${encodeURIComponent(characterId)}`;
 }
 
-export async function getCharacters(options: GetCharactersOptions = {}) {
-  let data: CharacterSheetsResponse | CharacterErrorResponse | null;
+function buildSessionParticipantCharacterAvatarUrl(
+  sessionId: string,
+  userId: string,
+  characterId: string,
+) {
+  return `${buildSessionParticipantCharacterUrl(sessionId, userId, characterId)}/avatar`;
+}
 
+export async function getCharacters(options: GetCharactersOptions = {}) {
   try {
-    data = await apiClient.get<CharacterSheetsResponse>(charactersAPI, {
-      token: "id",
+    const data = await apiClient.get<CharacterSheetsResponse>(charactersAPI, {
       query: options,
       fallbackErrorMessage: "Nie udało się pobrać kart postaci.",
     });
-  } catch (error) {
-    if (isAPIError(error) && (error.status === 401 || error.status === 403)) {
-      throw new Error("Brak uprawnień do pobrania kart postaci.");
-    }
 
-    throw error;
-  }
-
-  if (!data || !("characterSheets" in data)) {
-    throw new Error(
+    expectField(
+      data,
+      "characterSheets",
       "Backend zwrócił nieprawidłową odpowiedź listy kart postaci.",
     );
-  }
 
-  return data;
+    return data;
+  } catch (error) {
+    return mapAPIError(error, {
+      unauthorized: "Brak uprawnień do pobrania kart postaci.",
+    });
+  }
 }
 
 export async function getUserCharacters(
   userId: string,
   options: GetCharactersOptions = {},
 ) {
-  let data: CharacterSheetsResponse | CharacterErrorResponse | null;
-
   try {
-    data = await apiClient.get<CharacterSheetsResponse>(
+    const data = await apiClient.get<CharacterSheetsResponse>(
       buildUserCharactersUrl(userId),
       {
-        token: "id",
         query: options,
         fallbackErrorMessage: "Nie udało się pobrać kart postaci gracza.",
       },
     );
-  } catch (error) {
-    if (isAPIError(error) && (error.status === 401 || error.status === 403)) {
-      throw new Error(
-        "Brak uprawnień do pobrania kart postaci tego użytkownika.",
-      );
-    }
 
-    throw error;
-  }
-
-  if (!data || !("characterSheets" in data)) {
-    throw new Error(
+    expectField(
+      data,
+      "characterSheets",
       "Backend zwrócił nieprawidłową odpowiedź listy kart gracza.",
     );
-  }
 
-  return data;
+    return data;
+  } catch (error) {
+    return mapAPIError(error, {
+      unauthorized: "Brak uprawnień do pobrania kart postaci tego użytkownika.",
+    });
+  }
 }
 
 export async function getCharacter(characterId: string) {
-  let data: CharacterSheetResponse | null;
-
   try {
-    data = await apiClient.get<CharacterSheetResponse>(
+    const data = await apiClient.get<CharacterSheetResponse>(
       buildCharacterUrl(characterId),
       {
-        token: "id",
         fallbackErrorMessage: "Nie udało się pobrać karty postaci.",
       },
     );
+
+    return expectField(
+      data,
+      "characterSheet",
+      "Backend nie zwrócił danych karty postaci.",
+    );
   } catch (error) {
-    if (isAPIError(error) && (error.status === 401 || error.status === 403)) {
-      throw new Error(
-        error.message || "Brak uprawnień do pobrania tej karty postaci.",
-      );
-    }
-
-    if (isAPIError(error) && error.status === 404) {
-      throw new Error("Nie znaleziono karty postaci.");
-    }
-
-    throw error;
+    return mapAPIError(error, {
+      unauthorized: "Brak uprawnień do pobrania tej karty postaci.",
+      notFound: "Nie znaleziono karty postaci.",
+    });
   }
-
-  if (!data?.characterSheet) {
-    throw new Error("Backend nie zwrócił danych karty postaci.");
-  }
-
-  return data.characterSheet;
 }
 
 export async function createCharacter(payload: CharacterCreatePayload) {
@@ -141,24 +128,23 @@ export async function createCharacter(payload: CharacterCreatePayload) {
     charactersAPI,
     payload,
     {
-      token: "id",
       fallbackErrorMessage: "Nie udało się utworzyć karty postaci.",
     },
   );
 
-  if (!data?.characterSheet) {
-    throw new Error("Backend nie zwrócił utworzonej karty postaci.");
-  }
-
-  return data.characterSheet;
+  return expectField(
+    data,
+    "characterSheet",
+    "Backend nie zwrócił utworzonej karty postaci.",
+  );
 }
 
 function readCharacterMutationData(data: CharacterMutationResponse | null) {
-  if (!data?.characterSheet) {
-    throw new Error("Backend nie zwrócił zaktualizowanej karty postaci.");
-  }
-
-  return data.characterSheet;
+  return expectField(
+    data,
+    "characterSheet",
+    "Backend nie zwrócił zaktualizowanej karty postaci.",
+  );
 }
 
 async function runCharacterMutation(
@@ -168,17 +154,10 @@ async function runCharacterMutation(
   try {
     return readCharacterMutationData(await request());
   } catch (error) {
-    if (isAPIError(error) && (error.status === 401 || error.status === 403)) {
-      throw new Error(
-        error.message || "Brak uprawnień do modyfikacji tej karty postaci.",
-      );
-    }
-
-    if (isAPIError(error)) {
-      throw new Error(error.message || fallbackMessage);
-    }
-
-    throw error;
+    return mapAPIError(error, {
+      unauthorized: "Brak uprawnień do modyfikacji tej karty postaci.",
+      fallback: fallbackMessage,
+    });
   }
 }
 
@@ -192,12 +171,30 @@ export async function updateCharacter(
         buildCharacterUrl(characterId),
         payload,
         {
-          token: "id",
           fallbackErrorMessage: "Nie udało się zaktualizować karty postaci.",
         },
       ),
     "Nie udało się zaktualizować karty postaci.",
   );
+}
+
+export async function deleteCharacter(characterId: string) {
+  try {
+    const data = await apiClient.delete<CharacterMutationResponse>(
+      buildCharacterUrl(characterId),
+      {
+        fallbackErrorMessage: "Nie udało się usunąć karty postaci.",
+      },
+    );
+
+    return data?.message ?? "Character deleted";
+  } catch (error) {
+    return mapAPIError(error, {
+      unauthorized: "Brak uprawnień do usunięcia tej karty postaci.",
+      notFound: "Nie znaleziono karty postaci.",
+      fallback: "Nie udało się usunąć karty postaci.",
+    });
+  }
 }
 
 export async function uploadCharacterAvatar(
@@ -210,7 +207,6 @@ export async function uploadCharacterAvatar(
         buildCharacterAvatarUrl(characterId),
         payload,
         {
-          token: "id",
           fallbackErrorMessage: "Nie udało się wgrać awatara postaci.",
         },
       ),
@@ -224,11 +220,56 @@ export async function deleteCharacterAvatar(characterId: string) {
       apiClient.delete<CharacterMutationResponse>(
         buildCharacterAvatarUrl(characterId),
         {
-          token: "id",
           fallbackErrorMessage: "Nie udało się usunąć awatara postaci.",
         },
       ),
     "Nie udało się usunąć awatara postaci.",
+  );
+}
+
+export async function uploadSessionParticipantCharacterAvatar(
+  sessionId: string,
+  userId: string,
+  characterId: string,
+  payload: CharacterAvatarUploadPayload,
+) {
+  return runCharacterMutation(
+    () =>
+      apiClient.post<CharacterMutationResponse>(
+        buildSessionParticipantCharacterAvatarUrl(
+          sessionId,
+          userId,
+          characterId,
+        ),
+        payload,
+        {
+          fallbackErrorMessage:
+            "Nie udało się wgrać awatara postaci gracza w sesji.",
+        },
+      ),
+    "Nie udało się wgrać awatara postaci gracza w sesji.",
+  );
+}
+
+export async function deleteSessionParticipantCharacterAvatar(
+  sessionId: string,
+  userId: string,
+  characterId: string,
+) {
+  return runCharacterMutation(
+    () =>
+      apiClient.delete<CharacterMutationResponse>(
+        buildSessionParticipantCharacterAvatarUrl(
+          sessionId,
+          userId,
+          characterId,
+        ),
+        {
+          fallbackErrorMessage:
+            "Nie udało się usunąć awatara postaci gracza w sesji.",
+        },
+      ),
+    "Nie udało się usunąć awatara postaci gracza w sesji.",
   );
 }
 
@@ -244,7 +285,6 @@ export async function updateSessionParticipantCharacter(
         buildSessionParticipantCharacterUrl(sessionId, userId, characterId),
         payload,
         {
-          token: "id",
           fallbackErrorMessage:
             "Nie udało się zaktualizować karty gracza w sesji.",
         },

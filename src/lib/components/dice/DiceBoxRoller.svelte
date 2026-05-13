@@ -4,7 +4,7 @@
   import { OrthographicCamera, TextureLoader } from 'three';
   import type { Object3D, Texture } from 'three';
   import { Button } from '$lib/components/ui/button';
-  import { createAnimationSeed, withSeededMathRandom } from '$lib/features/dice';
+  import { createAnimationSeed, withSeededMathRandom } from '$lib/features/dice/seeded-random';
 
   import {
     createDiceRollFromDice,
@@ -26,7 +26,14 @@
     userName: string;
     disabled?: boolean;
     notationPreset?: string | null;
+    showQuickNotations?: boolean;
     replayRoll?: DiceRollResult | null;
+    surfaceHeightPx?: number;
+    surfaceWidthPx?: number;
+    controlsPlacement?: 'top' | 'bottom';
+    fillAvailableSpace?: boolean;
+    overlayMode?: boolean;
+    transparentBackground?: boolean;
     onMessage?: (message: string) => void;
     onRollPrepared?: (roll: DiceRollResult) => void | Promise<void>;
     onRollComplete?: (roll: DiceRollResult) => void;
@@ -61,7 +68,14 @@
     userName,
     disabled = false,
     notationPreset = null,
+    showQuickNotations = true,
     replayRoll = null,
+    surfaceHeightPx = DICEBOX_HEIGHT_PX,
+    surfaceWidthPx = 720,
+    controlsPlacement = 'top',
+    fillAvailableSpace = false,
+    overlayMode = false,
+    transparentBackground = false,
     onMessage,
     onRollPrepared,
     onRollComplete,
@@ -72,7 +86,18 @@
   const quickNotations = ['1d20', '1d100', '2d10', '3d6', '4d6', '1d10'];
   const textureLoader = new TextureLoader();
   const textureCache = new Map<string, Texture>();
-  const diceBoxWidthPx = 720;
+  const diceBoxFlexGapPx = 16;
+  const diceCameraHorizontalScale = 1.15;
+  const diceCameraTopScale = 1.2;
+  const diceCameraBottomScale = 1.65;
+  const diceBoxPhysicsConfig = {
+    strength: 0.55,
+    framerate: 1 / 120,
+    iterationLimit: 20000,
+    gravity_multiplier: 400,
+    enableShadows: false,
+    antialias: true
+  };
 
  
 
@@ -80,8 +105,14 @@
   let notationInput = $state(DEFAULT_DICE_NOTATION);
   let isInitializing = $state(true);
   let isRolling = $state(false);
+  let isWaitingForStyledDice = $state(false);
   let localMessage = $state('');
   let lastReplayedRollId = $state('');
+  let containerElement = $state<HTMLElement | null>(null);
+  let controlsElement = $state<HTMLElement | null>(null);
+  let messageElement = $state<HTMLElement | null>(null);
+  let measuredSurfaceHeightPx = $state(DICEBOX_HEIGHT_PX);
+  let measuredSurfaceWidthPx = $state(720);
 
   $effect(() => {
     if (!replayRoll || replayRoll.rollId === lastReplayedRollId || isInitializing || isRolling) {
@@ -98,8 +129,49 @@
     }
   });
 
-  onMount(async () => {
-    await initializeDiceBox();
+  onMount(() => {
+    const resizeObserver = new ResizeObserver(() => {
+      measureAvailableSurface();
+    });
+
+    if (containerElement) {
+      resizeObserver.observe(containerElement);
+    }
+
+    if (controlsElement) {
+      resizeObserver.observe(controlsElement);
+    }
+
+    if (messageElement) {
+      resizeObserver.observe(messageElement);
+    }
+
+    measureAvailableSurface();
+    void initializeDiceBox();
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  });
+
+  $effect(() => {
+    measuredSurfaceHeightPx = surfaceHeightPx;
+    measuredSurfaceWidthPx = surfaceWidthPx;
+    measureAvailableSurface();
+  });
+
+  $effect(() => {
+    localMessage;
+    isInitializing;
+    measureAvailableSurface();
+  });
+
+  $effect(() => {
+    if (!diceBox) {
+      return;
+    }
+
+    resizeDiceBoxSurface();
   });
 
   onDestroy(() => {
@@ -116,6 +188,77 @@
     onMessage?.(message);
   }
 
+  function measureAvailableSurface() {
+    if (!fillAvailableSpace || !containerElement) {
+      measuredSurfaceHeightPx = surfaceHeightPx;
+      measuredSurfaceWidthPx = surfaceWidthPx;
+      return;
+    }
+
+    const containerRect = containerElement.getBoundingClientRect();
+    const controlsHeight = controlsElement?.getBoundingClientRect().height ?? 0;
+    const messageHeight = messageElement?.getBoundingClientRect().height ?? 0;
+    const visibleBlockCount = 1 + (controlsHeight > 0 ? 1 : 0) + (messageHeight > 0 ? 1 : 0);
+    const reservedGap = Math.max(0, visibleBlockCount - 1) * diceBoxFlexGapPx;
+
+    measuredSurfaceWidthPx = Math.max(320, Math.floor(containerRect.width));
+    if (overlayMode) {
+      // Overlay ma być dokładnie rozmiarem widocznego viewportu mapy. Kontrolki
+      // są pozycjonowane nad canvasem, więc nie pomniejszają sceny kości.
+      measuredSurfaceHeightPx = Math.max(180, Math.floor(containerRect.height));
+      return;
+    }
+
+    // W docku canvas musi ustąpić miejsca kontrolkom, żeby nie tworzyć
+    // drugiego scrollowanego obszaru.
+    measuredSurfaceHeightPx = Math.max(
+      180,
+      Math.floor(containerRect.height - controlsHeight - messageHeight - reservedGap)
+    );
+  }
+
+  function resizeDiceBoxSurface() {
+    const box = diceBox;
+    const renderer = box?.renderer as
+      | ({ domElement?: HTMLElement; setSize?: (width: number, height: number, updateStyle?: boolean) => void })
+      | undefined;
+    const resizableBox = box as
+      | (DiceBox & { setDimensions?: (dimensions: { x: number; y: number }) => void })
+      | null;
+
+    if (!box || !renderer?.domElement) {
+      return;
+    }
+
+    // DiceBox trzyma osobny model rozmiaru świata fizycznego. Samo skalowanie
+    // CSS canvasu rozciągałoby obraz, więc synchronizujemy renderer i world box.
+    resizableBox?.setDimensions?.({
+      x: measuredSurfaceWidthPx,
+      y: measuredSurfaceHeightPx
+    });
+    renderer.setSize?.(measuredSurfaceWidthPx, measuredSurfaceHeightPx, true);
+    renderer.domElement.style.width = `${measuredSurfaceWidthPx}px`;
+    renderer.domElement.style.height = `${measuredSurfaceHeightPx}px`;
+    configureTransparentRenderer(renderer);
+    configureOrthographicCamera(box);
+  }
+
+  function configureTransparentRenderer(
+    renderer:
+      | {
+          domElement?: HTMLElement;
+          setClearColor?: (color: number, alpha?: number) => void;
+        }
+      | undefined
+  ) {
+    if (!transparentBackground || !renderer?.domElement) {
+      return;
+    }
+
+    renderer.setClearColor?.(0x000000, 0);
+    renderer.domElement.style.background = 'transparent';
+  }
+
   async function initializeDiceBox() {
     isInitializing = true;
     setMessage('');
@@ -127,16 +270,20 @@
         volume: 80,
         theme_texture: 'astral',
         theme_material: 'glass',
-        strength: 0.55,
-        framerate: 1 / 120,
-        iterationLimit: 20000,
-        gravity_multiplier: 400,
-        enableShadows: false,
-        antialias: true
+        ...diceBoxPhysicsConfig
+      });
+
+      console.info('[DiceBox] physics config', {
+        ...diceBoxPhysicsConfig,
+        viewport: {
+          width: measuredSurfaceWidthPx,
+          height: measuredSurfaceHeightPx
+        }
       });
 
       diceBox = box;
       await box.initialize();
+      configureTransparentRenderer(box.renderer as Parameters<typeof configureTransparentRenderer>[0]);
 
       await new Promise((resolve) => window.setTimeout(resolve, 300));
       configureOrthographicCamera(box);
@@ -159,8 +306,15 @@
     }
 
     const width = box.renderer.domElement.clientWidth || 800;
-    const height = box.renderer.domElement.clientHeight || DICEBOX_HEIGHT_PX;
-    const camera = new OrthographicCamera(-width, width, height, -height, 0.1, 10000);
+    const height = box.renderer.domElement.clientHeight || measuredSurfaceHeightPx;
+    const camera = new OrthographicCamera(
+      -width * diceCameraHorizontalScale,
+      width * diceCameraHorizontalScale,
+      height * diceCameraTopScale,
+      -height * diceCameraBottomScale,
+      0.1,
+      10000
+    );
     camera.position.z = box.camera.position?.z ?? 1000;
     box.camera = camera;
   }
@@ -230,6 +384,7 @@
     }
 
     let repaintInterval: number | undefined;
+    let initialRepaintInterval: number | undefined;
     isRolling = true;
     setMessage('');
 
@@ -237,8 +392,37 @@
       const { parsed } = parseDiceNotation(notation);
       const rollPlan = buildDiceBoxRollPlan(parsed);
       const preparedStylePlan = await prepareStylePlan(rollPlan.stylePlan);
-      const applyStyles = () => applyStylePlan(box, preparedStylePlan);
+      const hasCustomStyles = preparedStylePlan.length > 0;
+      const applyStyles = () => {
+        const stylesApplied = applyStylePlan(box, preparedStylePlan);
 
+        if (stylesApplied && isWaitingForStyledDice) {
+          isWaitingForStyledDice = false;
+        }
+
+        return stylesApplied;
+      };
+
+      console.info('[DiceBox] roll physics params', {
+        notation,
+        standardNotation: rollPlan.standardNotation,
+        animationSeed,
+        physicalValues: rollPlan.physicalValues,
+        stylePlan: rollPlan.stylePlan,
+        physics: diceBoxPhysicsConfig,
+        viewport: {
+          width: measuredSurfaceWidthPx,
+          height: measuredSurfaceHeightPx
+        }
+      });
+
+      isWaitingForStyledDice = hasCustomStyles;
+      initialRepaintInterval = window.setInterval(() => {
+        if (applyStyles() && initialRepaintInterval !== undefined) {
+          window.clearInterval(initialRepaintInterval);
+          initialRepaintInterval = undefined;
+        }
+      }, 16);
       repaintInterval = window.setInterval(applyStyles, REPAINT_INTERVAL_MS);
       const rawResult = await withSeededMathRandom(animationSeed, () => box.roll(rollPlan.standardNotation));
 
@@ -255,6 +439,14 @@
       validatePhysicalValues(rollPlan.physicalValues, values);
       const dice = buildLogicalDiceFromPhysicalValues(parsed, values);
 
+      console.info('[DiceBox] roll physical result', {
+        notation,
+        standardNotation: rollPlan.standardNotation,
+        animationSeed,
+        extractedValues: values,
+        logicalDice: dice
+      });
+
       return {
         dice,
         standardNotation: rollPlan.standardNotation
@@ -264,6 +456,11 @@
         window.clearInterval(repaintInterval);
       }
 
+      if (initialRepaintInterval !== undefined) {
+        window.clearInterval(initialRepaintInterval);
+      }
+
+      isWaitingForStyledDice = false;
       isRolling = false;
     }
   }
@@ -471,11 +668,17 @@
   }
 
   function applyStylePlan(box: DiceBox, stylePlan: PreparedStylePlanEntry[]) {
+    if (stylePlan.length === 0) {
+      return true;
+    }
+
     const diceList = box.diceList as DiceNode[] | undefined;
 
     if (!diceList) {
-      return;
+      return false;
     }
+
+    let appliedEntries = 0;
 
     for (const entry of stylePlan) {
       const die = diceList[entry.diceIndex];
@@ -491,7 +694,10 @@
           configureTextureMaterial(material, entry.texture);
         }
       });
+      appliedEntries += 1;
     }
+
+    return appliedEntries === stylePlan.length;
   }
 
   function processNode(rootNode: DiceNode, applyMaterial: (material: MaterialWithExtensions) => void) {
@@ -612,15 +818,28 @@
   }
 </script>
 
-<div class="space-y-4">
+<div
+  bind:this={containerElement}
+  class={[
+    'h-full min-h-0',
+    overlayMode ? 'pointer-events-none relative' : 'flex flex-col gap-4'
+  ]}
+>
   <form
-    class="flex justify-center"
+    bind:this={controlsElement}
+    class={[
+      'flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center',
+      controlsPlacement === 'bottom' ? 'order-2' : 'order-1',
+      overlayMode
+        ? 'pointer-events-auto absolute bottom-3 left-1/2 z-10 -translate-x-1/2'
+        : ''
+    ]}
     onsubmit={(event) => {
       event.preventDefault();
       rollDice();
     }}
   >
-    <div class="w-full space-y-2">
+    <div class="hidden">
       <!-- <Label for={`${diceBoxElementId}-notation`}>Notacja</Label>
       <Input
         id={`${diceBoxElementId}-notation`}
@@ -629,36 +848,70 @@
         placeholder="np. 2d10#2aa3ff + 1d20@marble"
       /> -->
     </div>
-    <Button type="submit" disabled={disabled || isInitializing || isRolling}>
+
+    {#if showQuickNotations}
+      <div class="flex flex-wrap justify-center gap-2">
+        {#each quickNotations as notation}
+          <Button
+            type="button"
+            size="sm"
+            variant={notationInput === notation ? 'default' : 'outline'}
+            disabled={disabled || isInitializing || isRolling}
+            onclick={() => pickNotation(notation)}
+          >
+            {notation}
+          </Button>
+        {/each}
+      </div>
+    {/if}
+
+    <Button
+      type="submit"
+      size="default"
+      class={overlayMode ? 'px-5 shadow-lg' : ''}
+      disabled={disabled || isInitializing || isRolling}
+    >
       {isRolling ? 'Rzut...' : 'Rzuć kośćmi'}
     </Button>
   </form>
 
-  <div class="flex justify-center overflow-x-auto">
+  <div
+    class={[
+      'overflow-hidden',
+      controlsPlacement === 'bottom' ? 'order-1' : 'order-2',
+      overlayMode ? 'pointer-events-none absolute inset-0' : 'flex justify-center'
+    ]}
+  >
     <div
       id={diceBoxElementId}
-      class="overflow-hidden rounded-md border bg-neutral-950"
-      style={`height: ${DICEBOX_HEIGHT_PX}px; width: ${diceBoxWidthPx}px;`}
+      class={[
+        'h-full w-full overflow-hidden transition-opacity duration-75',
+        transparentBackground ? 'bg-transparent' : 'rounded-md border bg-neutral-950',
+        isWaitingForStyledDice ? "opacity-0" : "opacity-100"
+      ]}
+      style={`height: ${measuredSurfaceHeightPx}px; width: ${measuredSurfaceWidthPx}px; max-width: 100%;`}
     ></div>
   </div>
 
-  <div class="flex flex-wrap gap-2">
-    {#each quickNotations as notation}
-      <Button
-        type="button"
-        size="sm"
-        variant="outline"
-        disabled={disabled || isInitializing || isRolling}
-        onclick={() => pickNotation(notation)}
-      >
-        {notation}
-      </Button>
-    {/each}
-  </div>
-
   {#if isInitializing}
-    <p class="text-sm text-muted-foreground">Uruchamianie fizycznego DiceBox...</p>
+    <p
+      bind:this={messageElement}
+      class={[
+        'text-sm text-muted-foreground',
+        controlsPlacement === 'bottom' ? 'order-3' : 'order-3'
+      ]}
+    >
+      Uruchamianie fizycznego DiceBox...
+    </p>
   {:else if localMessage}
-    <p class="text-sm text-muted-foreground">{localMessage}</p>
+    <p
+      bind:this={messageElement}
+      class={[
+        'text-sm text-muted-foreground',
+        controlsPlacement === 'bottom' ? 'order-3' : 'order-3'
+      ]}
+    >
+      {localMessage}
+    </p>
   {/if}
 </div>

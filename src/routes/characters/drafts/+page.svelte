@@ -9,7 +9,7 @@
     CardHeader,
     CardTitle
   } from '$lib/components/ui/card';
-  import { getCurrentUser } from '$lib/modules/auth';
+  import { getCurrentUser } from '$lib/modules/AuthModule/user';
   import {
     deleteCharacterDraft,
     getCharacterSystemSummaries,

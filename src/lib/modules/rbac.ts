@@ -1,5 +1,6 @@
 import { goto } from '$app/navigation';
-import { hasRole, isAuthenticated } from '$lib/modules/auth';
+import { hasRole } from '$lib/modules/AuthModule/roles';
+import { isAuthenticated } from '$lib/modules/AuthModule/service';
 import type { AppRole } from '$lib/modules/navigation';
 
 export type RoleGuardOptions = {
