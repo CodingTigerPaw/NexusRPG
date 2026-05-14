@@ -83,6 +83,7 @@
   } from '$lib/modules/charactersModule/notes';
   import {
     formatDiceMechanics,
+    formatDiceRollTotal,
     type DiceRollResult
   } from '$lib/modules/dice-roller';
   import { resolveCharacterSheet } from '$lib/modules/charactersModule/character-sheet';
@@ -2888,9 +2889,9 @@
                                   <p class="mt-1 font-medium text-primary">{formatDiceMechanics(roll)}</p>
                                 {/if}
                               </div>
-                              <div class="text-left sm:text-right">
-                                {#if shouldShowRollTotal(roll)}
-                                  <p class="text-lg font-semibold">{roll.total}</p>
+                                <div class="text-left sm:text-right">
+                                  {#if shouldShowRollTotal(roll)}
+                                  <p class="text-lg font-semibold">{formatDiceRollTotal(roll)}</p>
                                 {/if}
                                 <p class="text-xs text-muted-foreground">
                                   {new Date(roll.createdAt).toLocaleTimeString('pl-PL')}

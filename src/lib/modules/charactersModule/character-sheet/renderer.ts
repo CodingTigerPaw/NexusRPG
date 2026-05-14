@@ -32,6 +32,14 @@ function formatValue(
   value: unknown,
   field: CharacterSheetFieldDefinition | CharacterSheetDerivedStatDefinition
 ) {
+  if (field.format === 'percentage') {
+    const sourceValue =
+      value === undefined || value === null || value === '' ? (field.fallback ?? '') : value;
+    const numericValue = typeof sourceValue === 'number' ? sourceValue : Number(sourceValue);
+
+    return Number.isFinite(numericValue) ? `${Math.trunc(numericValue)}%` : String(sourceValue);
+  }
+
   if (value === undefined || value === null || value === '') {
     return field.fallback ?? '';
   }

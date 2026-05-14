@@ -23,8 +23,11 @@ export type DiceRollMechanicsResult = {
   flowId?: string;
   checkName: string;
   target?: number;
+  hardTarget?: number;
+  extremeTarget?: number;
   roll?: number;
   successLevel?: string;
+  successThreshold?: string;
   successes?: number;
   criticalPairs?: number;
   messyCritical?: boolean;
@@ -310,6 +313,14 @@ const successLabels: Record<string, string> = {
   fumble: 'Fumble'
 };
 
+const cocThresholdLabels: Record<string, string> = {
+  critical: 'krytyk',
+  oneFifth: '1/5',
+  half: '1/2',
+  regular: 'zwykły',
+  none: 'brak'
+};
+
 function formatSuccessCount(value: number) {
   if (value === 1) {
     return '1 sukces';
@@ -320,6 +331,14 @@ function formatSuccessCount(value: number) {
   }
 
   return `${value} sukcesów`;
+}
+
+function formatPercentage(value: number) {
+  return `${Math.trunc(value)}%`;
+}
+
+export function formatDiceRollTotal(roll: DiceRollResult) {
+  return roll.mechanics?.systemId === 'coc5' ? formatPercentage(roll.total) : String(roll.total);
 }
 
 export function formatDiceMechanics(roll: DiceRollResult) {
@@ -340,6 +359,24 @@ export function formatDiceMechanics(roll: DiceRollResult) {
     ].filter(Boolean);
 
     return [successes, ...details].join(' · ');
+  }
+
+  if (roll.mechanics.systemId === 'coc5') {
+    const level = roll.mechanics.successLevel
+      ? successLabels[roll.mechanics.successLevel] ?? roll.mechanics.successLevel
+      : roll.mechanics.status;
+    const threshold = roll.mechanics.successThreshold
+      ? (cocThresholdLabels[roll.mechanics.successThreshold] ?? roll.mechanics.successThreshold)
+      : '';
+    const details = [
+      threshold && threshold !== 'brak' && threshold !== 'zwykły' ? `przebicie ${threshold}` : '',
+      typeof roll.mechanics.roll === 'number' ? `rzut ${formatPercentage(roll.mechanics.roll)}` : '',
+      typeof roll.mechanics.target === 'number'
+        ? `próg ${formatPercentage(roll.mechanics.target)}`
+        : ''
+    ].filter(Boolean);
+
+    return [level ?? 'wynik nierozstrzygnięty', ...details].join(' · ');
   }
 
   const level = roll.mechanics.successLevel

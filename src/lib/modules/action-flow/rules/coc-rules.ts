@@ -9,6 +9,16 @@ export type CocSuccessLevel =
   | 'failure'
   | 'fumble';
 
+export type CocSuccessThreshold = 'critical' | 'oneFifth' | 'half' | 'regular' | 'none';
+
+export function resolveCocSuccessThresholds(target: number) {
+  return {
+    regular: target,
+    half: Math.floor(target / 2),
+    oneFifth: Math.floor(target / 5)
+  };
+}
+
 export function resolveCocSuccessLevel(roll: number, target: number): CocSuccessLevel {
   if (roll === 1) {
     return 'critical';
@@ -29,6 +39,28 @@ export function resolveCocSuccessLevel(roll: number, target: number): CocSuccess
   return roll <= target ? 'regular' : 'failure';
 }
 
+export function resolveCocSuccessThreshold(roll: number, target: number): CocSuccessThreshold {
+  if (roll === 1) {
+    return 'critical';
+  }
+
+  if (resolveCocSuccessLevel(roll, target) === 'fumble' || roll > target) {
+    return 'none';
+  }
+
+  const thresholds = resolveCocSuccessThresholds(target);
+
+  if (roll <= thresholds.oneFifth) {
+    return 'oneFifth';
+  }
+
+  if (roll <= thresholds.half) {
+    return 'half';
+  }
+
+  return 'regular';
+}
+
 export const CocRules = {
   compareRollUnder(
     targetKey: string,
@@ -47,11 +79,16 @@ export const CocRules = {
           typeof override === 'string'
             ? (override as CocSuccessLevel)
             : resolveCocSuccessLevel(roll, target);
+        const thresholds = resolveCocSuccessThresholds(target);
 
         return {
           ...state,
           data: cloneData(state.data, {
-            [resultKey]: successLevel
+            [resultKey]: successLevel,
+            successThreshold: resolveCocSuccessThreshold(roll, target),
+            regularTarget: thresholds.regular,
+            hardTarget: thresholds.half,
+            extremeTarget: thresholds.oneFifth
           })
         };
       }

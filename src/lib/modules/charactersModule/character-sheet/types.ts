@@ -4,6 +4,7 @@ import type { CharacterNote } from '../notes';
 export type CharacterSheetValueFormat =
   | 'text'
   | 'number'
+  | 'percentage'
   | 'list'
   | 'longText'
   | 'namedDescriptions'

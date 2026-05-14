@@ -49,10 +49,18 @@ const skillCheck: CharacterActionDefinition = {
       checkName: input.skill ?? "Test umiejętności",
       target:
         typeof state.data.target === "number" ? state.data.target : undefined,
+      hardTarget:
+        typeof state.data.hardTarget === "number" ? state.data.hardTarget : undefined,
+      extremeTarget:
+        typeof state.data.extremeTarget === "number" ? state.data.extremeTarget : undefined,
       roll: roll.total,
       successLevel:
         typeof state.data.successLevel === "string"
           ? state.data.successLevel
+          : undefined,
+      successThreshold:
+        typeof state.data.successThreshold === "string"
+          ? state.data.successThreshold
           : undefined,
       status: state.status,
       haltReason: state.halt?.reason,
