@@ -5,6 +5,9 @@ export {
   buildSessionToolboxResources
 } from './resource-model';
 export type {
+  SessionToolboxModule,
+  SessionToolboxModuleId,
+  SessionToolboxInstance,
   SessionToolboxResource,
   SessionToolboxResourceChange,
   SessionToolboxResourceId,

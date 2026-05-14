@@ -49,6 +49,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
+          PUBLIC_APP_ENV: dev
           PUBLIC_AUTH_LOGIN_URL: ${{ vars.PUBLIC_AUTH_LOGIN_URL }}
           PUBLIC_AUTH_NEW_PASSWORD_URL: ${{ vars.PUBLIC_AUTH_NEW_PASSWORD_URL }}
           PUBLIC_AUTH_REFRESH_URL: ${{ vars.PUBLIC_AUTH_REFRESH_URL }}
@@ -103,6 +104,7 @@ jobs:
       - name: Build
         run: npm run build
         env:
+          PUBLIC_APP_ENV: stable
           PUBLIC_AUTH_LOGIN_URL: ${{ vars.PUBLIC_AUTH_LOGIN_URL }}
           PUBLIC_AUTH_NEW_PASSWORD_URL: ${{ vars.PUBLIC_AUTH_NEW_PASSWORD_URL }}
           PUBLIC_AUTH_REFRESH_URL: ${{ vars.PUBLIC_AUTH_REFRESH_URL }}

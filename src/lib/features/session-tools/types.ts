@@ -8,6 +8,20 @@ export type ToolboxState = {
   position: ToolboxPosition;
 };
 
+export type SessionToolboxInstance = {
+  instanceId: string;
+  title: string;
+  initialPosition?: ToolboxPosition;
+};
+
+export type SessionToolboxModuleId = "resources";
+
+export type SessionToolboxModule = {
+  id: SessionToolboxModuleId;
+  label: string;
+  description?: string;
+};
+
 export type SessionToolboxCharacterSummary = {
   characterId: string;
   characterName: string;
