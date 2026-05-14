@@ -27,6 +27,13 @@
   import SessionTableCanvas from '$lib/features/session-stage/components/SessionTableCanvas.svelte';
   import type { SessionTableParticipant } from '$lib/features/session-stage/components/SessionTableCanvas.svelte';
   import {
+    buildSessionToolboxResourcePayload,
+    buildSessionToolboxResources,
+    GmOnlyLiveSessionToolbox,
+    type SessionToolboxCharacterSummary,
+    type SessionToolboxResourceChange
+  } from '$lib/features/session-tools';
+  import {
     createSessionAssetUploadUrl,
     deleteSessionAsset,
     getSessionAssets,
@@ -172,6 +179,7 @@
   let hideRollFromPlayers = $state(false);
   let isRollSettingsOpen = $state(false);
   let isRollLogOpen = $state(false);
+  let savingToolboxResourceKey = $state('');
   let gmManualRoll = $state(false);
   let gmManualCheckName = $state('Rzut przeciwnika');
   let gmManualAttributeName = $state('Siła');
@@ -320,6 +328,23 @@
       avatarUrl: entry.character?.avatarUrl ?? null,
       isActive: entry.character?.characterId === activeEntry?.character?.characterId
     }))
+  );
+  const toolboxCharacters = $derived<SessionToolboxCharacterSummary[]>(
+    entries.flatMap((entry) =>
+      entry.character
+        ? [
+            {
+              characterId: entry.character.characterId,
+              userId: entry.participant.userId,
+              characterName: entry.character.name,
+              playerName: entry.playerName,
+              systemId: entry.character.rpgSystem ?? session?.rpgSystem,
+              resources: buildSessionToolboxResources(entry.character),
+              canEdit: canEditToolboxCharacter(entry)
+            }
+          ]
+        : []
+    )
   );
 
   $effect(() => {
@@ -1760,6 +1785,66 @@
     );
   }
 
+  function isBackendParticipantEntry(entry: SessionCharacterEntry) {
+    return backendParticipants.some(
+      (participant) =>
+        participant.userId === entry.participant.userId &&
+        participant.characterId === entry.participant.characterId
+    );
+  }
+
+  function canEditToolboxCharacter(entry: SessionCharacterEntry) {
+    if (!entry.character) {
+      return false;
+    }
+
+    if (canManageSession) {
+      return isBackendParticipantEntry(entry);
+    }
+
+    return entry.participant.userId === userId;
+  }
+
+  async function updateToolboxResource(change: SessionToolboxResourceChange) {
+    if (!session || savingToolboxResourceKey) {
+      return;
+    }
+
+    const entry = entries.find((candidate) => candidate.character?.characterId === change.characterId);
+
+    if (!entry?.character || !canEditToolboxCharacter(entry)) {
+      return;
+    }
+
+    const payload = buildSessionToolboxResourcePayload(
+      entry.character,
+      change.resourceId,
+      change.value
+    );
+
+    savingToolboxResourceKey = `${change.characterId}:${change.resourceId}`;
+    editorMessage = '';
+
+    try {
+      const updatedCharacter =
+        canManageSession && isBackendParticipantEntry(entry)
+          ? await updateSessionParticipantCharacter(
+              session.sessionId,
+              entry.participant.userId,
+              entry.character.characterId,
+              payload
+            )
+          : await updateCharacter(entry.character.characterId, payload);
+
+      replaceActiveCharacter(updatedCharacter);
+    } catch (error) {
+      editorMessage =
+        error instanceof Error ? error.message : 'Nie udało się zaktualizować zasobu postaci.';
+    } finally {
+      savingToolboxResourceKey = '';
+    }
+  }
+
   function removeCharacterFromEntryList(
     currentEntries: SessionCharacterEntry[],
     characterId: string
@@ -2985,6 +3070,13 @@
           </Dialog.Portal>
         </Dialog.Root>
       </section>
+
+      <GmOnlyLiveSessionToolbox
+        {canManageSession}
+        characters={toolboxCharacters}
+        savingResourceKey={savingToolboxResourceKey}
+        onResourceChange={updateToolboxResource}
+      />
 
     {/if}
 

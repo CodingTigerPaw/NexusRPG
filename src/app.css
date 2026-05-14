@@ -47,6 +47,73 @@
     font-family: 'Amarante', theme('fontFamily.serif');
   }
 
+  .app-shell {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .app-shell-content {
+    position: relative;
+    z-index: 1;
+  }
+
+  .decoration-glass-layer {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .decoration-item {
+    position: absolute;
+    pointer-events: none;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: contain;
+  }
+
+  .decoration-item--vampire-symbol {
+    right: -5rem;
+    bottom: -6rem;
+    width: min(30rem, 48vw);
+    aspect-ratio: 735 / 944;
+    opacity: 0.18;
+    background-image: url('/assets/assets/Vampire%20The%20Masquerade%20Symbol.jpeg');
+  }
+
+  .decoration-item--cthulhu-left {
+    left: -8rem;
+    bottom: -7rem;
+    width: min(36rem, 58vw);
+    height: min(36rem, 58vw);
+    opacity: 0.16;
+    background:
+      radial-gradient(closest-side, hsl(var(--primary) / 0.25), transparent 72%),
+      conic-gradient(from 210deg at 12% 88%, transparent 0 76%, hsl(var(--primary) / 0.5) 77% 79%, transparent 80%);
+  }
+
+  .decoration-item--cthulhu-right {
+    right: -7rem;
+    top: 12vh;
+    width: min(28rem, 45vw);
+    height: min(28rem, 45vw);
+    opacity: 0.1;
+    background:
+      radial-gradient(closest-side, hsl(var(--accent) / 0.32), transparent 70%),
+      conic-gradient(from 160deg, transparent 0 65%, hsl(var(--primary) / 0.4) 66% 68%, transparent 69%);
+    transform: rotate(18deg);
+  }
+
+  [data-theme-visual='eldritch'] .themed-panel,
+  [data-theme-visual='eldritch'] .bg-card,
+  [data-theme-visual='urban-blood'] .themed-panel,
+  [data-theme-visual='urban-blood'] .bg-card {
+    box-shadow:
+      0 1px 0 hsl(var(--foreground) / 0.04) inset,
+      0 14px 36px hsl(0 0% 0% / 0.2);
+  }
+
   .ui-fade-in {
     animation: ui-fade-in 140ms ease-out both;
   }
