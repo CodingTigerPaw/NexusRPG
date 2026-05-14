@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount, tick } from 'svelte';
-  import { Minus, Wrench } from 'lucide-svelte';
+  import { Minus, Wrench, X } from 'lucide-svelte';
   import { Button } from '$lib/components/ui/button';
   import type { ToolboxPosition } from '../types';
 
@@ -8,6 +8,7 @@
     title?: string;
     initialPosition?: ToolboxPosition;
     initialCollapsed?: boolean;
+    onClose?: () => void;
     children?: import('svelte').Snippet;
   };
 
@@ -15,6 +16,7 @@
     title = 'Narzędzia',
     initialPosition,
     initialCollapsed = false,
+    onClose,
     children
   }: Props = $props();
 
@@ -136,11 +138,26 @@
       size="icon"
       variant="ghost"
       class="size-7"
+      onpointerdown={(event) => event.stopPropagation()}
       onclick={toggleCollapsed}
       aria-label={isCollapsed ? 'Rozwiń toolbox' : 'Zwiń toolbox'}
     >
       <Minus class={`size-4 transition-transform ${isCollapsed ? 'rotate-90' : ''}`} />
     </Button>
+
+    {#if onClose}
+      <Button
+        type="button"
+        size="icon"
+        variant="ghost"
+        class="size-7"
+        onpointerdown={(event) => event.stopPropagation()}
+        onclick={onClose}
+        aria-label="Zamknij toolbox"
+      >
+        <X class="size-4" />
+      </Button>
+    {/if}
   </div>
 
   {#if !isCollapsed}

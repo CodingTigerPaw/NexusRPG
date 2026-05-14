@@ -66,6 +66,10 @@ describe('LiveSessionToolbox', () => {
     });
 
     expect(await screen.findByText('Toolbox sesji')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Zasoby' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
     expect(screen.getByText('Zasoby postaci')).toBeInTheDocument();
     expect(screen.getByText('Nadia')).toBeInTheDocument();
     expect(screen.getByText('Evelyn')).toBeInTheDocument();
