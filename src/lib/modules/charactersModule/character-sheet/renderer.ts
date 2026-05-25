@@ -10,6 +10,7 @@ import type {
   CharacterSheetFieldDefinition,
   ResolvedCharacterSheet
 } from './types';
+import { parseCharacterNotes } from '../notes';
 
 const sheetDefinitions: CharacterSheetDefinition[] = getCharacterSystemSheetDefinitions();
 
@@ -31,6 +32,14 @@ function formatValue(
   value: unknown,
   field: CharacterSheetFieldDefinition | CharacterSheetDerivedStatDefinition
 ) {
+  if (field.format === 'percentage') {
+    const sourceValue =
+      value === undefined || value === null || value === '' ? (field.fallback ?? '') : value;
+    const numericValue = typeof sourceValue === 'number' ? sourceValue : Number(sourceValue);
+
+    return Number.isFinite(numericValue) ? `${Math.trunc(numericValue)}%` : String(sourceValue);
+  }
+
   if (value === undefined || value === null || value === '') {
     return field.fallback ?? '';
   }
@@ -93,11 +102,28 @@ export function resolveCharacterSheet(
     ])
   );
 
+  function resolveFieldValue(field: { path?: string; derivedStat?: string }) {
+    // Zasoby zmienne w czasie sesji mają własną wartość bieżącą pod `path`,
+    // a `derivedStat` zostaje fallbackiem dla kart sprzed wprowadzenia toolboxa.
+    const pathValue = field.path ? readPath(character, field.path) : undefined;
+
+    if (pathValue !== undefined && pathValue !== null && pathValue !== '') {
+      return pathValue;
+    }
+
+    if (field.derivedStat) {
+      return derivedValues[field.derivedStat];
+    }
+
+    return pathValue;
+  }
+
   return {
     id: definition.id,
     systemName: definition.systemName,
     characterName: character.name,
     avatarUrl: character.avatarUrl ?? null,
+    notes: parseCharacterNotes(character.notes),
     derivedStats: (definition.derivedStats ?? []).map((derivedStat) => ({
       ...derivedStat,
       value: formatValue(derivedValues[derivedStat.id], derivedStat)
@@ -108,10 +134,12 @@ export function resolveCharacterSheet(
         ...group,
         fields: group.fields.map((field) => ({
           ...field,
-          value: formatValue(
-            field.derivedStat ? derivedValues[field.derivedStat] : readPath(character, field.path ?? ''),
-            field
-          )
+          value: formatValue(resolveFieldValue(field), field),
+          // Dla zasobów sesyjnych `value` oznacza stan bieżący, więc zakres kropek
+          // musi nadal pochodzić z kalkulatora bazowego parametru.
+          maxValue: field.path && field.derivedStat
+            ? formatValue(derivedValues[field.derivedStat], field)
+            : undefined
         }))
       }))
     }))

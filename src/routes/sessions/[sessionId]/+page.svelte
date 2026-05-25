@@ -10,8 +10,10 @@
   } from '$lib/features/sessions/services/session-participants';
   import { Button } from '$lib/components/ui/button';
   import { Card, CardContent } from '$lib/components/ui/card';
-  import { getCurrentUser, hasRole } from '$lib/modules/auth';
-  import { getUserCharacters, type CharacterCard } from '$lib/features/characters/api';
+  import { Spinner } from '$lib/components/ui/spinner';
+  import { getCurrentUser } from '$lib/modules/AuthModule/user';
+  import { hasRole } from '$lib/modules/AuthModule/roles';
+  import { getUserCharacters, type CharacterCard } from '$lib/modules/characters';
   import { appRoles } from '$lib/modules/navigation';
   import {
     addRpgSessionPlayers,
@@ -20,7 +22,7 @@
     removeRpgSessionPlayer,
     type RpgSession,
     type RpgSessionParticipant
-  } from '$lib/features/sessions/api';
+  } from '$lib/modules/rpg-sessions';
   import { requireAuth } from '$lib/modules/rbac';
   import { getUsers } from '$lib/modules/users/users';
   import { type AppUser } from '$lib/modules/users/userType';
@@ -285,11 +287,12 @@
     </div>
 
     {#if isLoading}
-      <Card class="border-border/80 bg-card/95">
-        <CardContent class="p-6">
-          <p class="text-sm text-muted-foreground">Pobieranie sesji RPG...</p>
-        </CardContent>
-      </Card>
+      <div class="flex justify-center py-8">
+        <div class="flex items-center gap-3">
+          <Spinner size="sm" label="Pobieranie szczegółów sesji..." />
+          <p class="text-sm text-muted-foreground">Pobieranie szczegółów sesji...</p>
+        </div>
+      </div>
     {:else if errorMessage}
       <Card class="border-destructive/40 bg-destructive/10">
         <CardContent class="p-6">

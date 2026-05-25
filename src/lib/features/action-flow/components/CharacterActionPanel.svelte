@@ -19,6 +19,7 @@
     fallbackRpgSystem?: string;
     selectedActionId: string;
     inputValues: CharacterActionInputValues;
+    autoSelectFirstAction?: boolean;
     onActionChange: (actionId: string) => void;
     onInputChange: (inputId: string, value: string) => void;
   };
@@ -28,6 +29,7 @@
     fallbackRpgSystem,
     selectedActionId,
     inputValues,
+    autoSelectFirstAction = true,
     onActionChange,
     onInputChange
   }: Props = $props();
@@ -51,6 +53,7 @@
   $effect(() => {
     if (
       actions.length > 0 &&
+      autoSelectFirstAction &&
       !selectedActionId &&
       defaultedActionContextKey !== actionContextKey
     ) {
@@ -75,8 +78,21 @@
     return inputValues[inputId] ?? '';
   }
 
+  function selectedOptionForInput(input: CharacterActionInputDefinition) {
+    const value = valueFor(input.id);
+    return (
+      optionsForInput(input).find(
+        (entry) => entry.id === value || entry.label.toLowerCase() === value.toLowerCase()
+      ) ?? null
+    );
+  }
+
+  function displayValueFor(input: CharacterActionInputDefinition) {
+    return selectedOptionForInput(input)?.label ?? valueFor(input.id);
+  }
+
   function filteredOptionsForInput(input: CharacterActionInputDefinition) {
-    const query = valueFor(input.id).trim().toLowerCase();
+    const query = displayValueFor(input).trim().toLowerCase();
     const options = optionsForInput(input);
 
     if (!query) {
@@ -98,10 +114,21 @@
     focusedInputId = '';
   }
 
-  function selectedOptionLabel(input: CharacterActionInputDefinition) {
-    const value = valueFor(input.id);
-    const option = optionsForInput(input).find((entry) => entry.id === value);
-    return option ? `${option.label}: ${option.value}` : '';
+  function normalizeInputValue(input: CharacterActionInputDefinition) {
+    const selectedOption = selectedOptionForInput(input);
+
+    if (selectedOption && selectedOption.id !== valueFor(input.id)) {
+      onInputChange(input.id, selectedOption.id);
+    }
+  }
+
+  function isVtmRatingInput(input: CharacterActionInputDefinition) {
+    return input.source === 'vtm-attributes' || input.source === 'vtm-abilities';
+  }
+
+  function ratingDots(value: number) {
+    const rating = Math.max(0, Math.min(5, Math.trunc(value)));
+    return Array.from({ length: 5 }, (_, index) => index < rating);
   }
 
   function isValidInputValue(input: CharacterActionInputDefinition) {
@@ -153,7 +180,7 @@
                   ? 'border-destructive focus-visible:outline-destructive'
                   : 'border-input'
               ]}
-              value={valueFor(input.id)}
+              value={displayValueFor(input)}
               placeholder="Zacznij pisać albo wybierz z listy"
               autocomplete="off"
               onfocus={() => (focusedInputId = input.id)}
@@ -166,6 +193,7 @@
               }}
               onblur={() => {
                 setTimeout(() => {
+                  normalizeInputValue(input);
                   blurredInputs = {
                     ...blurredInputs,
                     [input.id]: true
@@ -183,11 +211,29 @@
                     <button
                       type="button"
                       class="flex w-full items-center justify-between gap-3 rounded-sm px-3 py-2 text-left hover:bg-muted"
-                      onmousedown={(event) => event.preventDefault()}
-                      onclick={() => selectInputOption(input.id, option.id)}
+                      onpointerdown={(event) => {
+                        event.preventDefault();
+                        selectInputOption(input.id, option.id);
+                      }}
                     >
                       <span>{option.label}</span>
-                      <span class="text-xs text-muted-foreground">{option.value}</span>
+                      {#if isVtmRatingInput(input)}
+                        <span
+                          class="flex shrink-0 items-center gap-1"
+                          aria-label={`Wartość ${option.value} z 5`}
+                        >
+                          {#each ratingDots(option.value) as filled}
+                            <span
+                              class={[
+                                'h-2 w-2 rounded-full border border-primary/70',
+                                filled ? 'bg-primary' : 'bg-transparent'
+                              ]}
+                            ></span>
+                          {/each}
+                        </span>
+                      {:else}
+                        <span class="text-xs text-muted-foreground">{option.value}</span>
+                      {/if}
                     </button>
                   {/each}
                 {:else}
@@ -195,8 +241,28 @@
                 {/if}
               </div>
             {/if}
-            {#if selectedOptionLabel(input)}
-              <p class="mt-1 text-xs text-muted-foreground">{selectedOptionLabel(input)}</p>
+            {#if selectedOptionForInput(input)}
+              {@const selectedOption = selectedOptionForInput(input)}
+              <div class="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                <span>{selectedOption?.label}</span>
+                {#if isVtmRatingInput(input)}
+                  <span
+                    class="flex items-center gap-1"
+                    aria-label={`Wartość ${selectedOption?.value ?? 0} z 5`}
+                  >
+                    {#each ratingDots(selectedOption?.value ?? 0) as filled}
+                      <span
+                        class={[
+                          'h-1.5 w-1.5 rounded-full border border-primary/70',
+                          filled ? 'bg-primary' : 'bg-transparent'
+                        ]}
+                      ></span>
+                    {/each}
+                  </span>
+                {:else}
+                  <span>{selectedOption?.value}</span>
+                {/if}
+              </div>
             {:else if shouldShowInvalidState(input)}
               <p class="mt-1 text-xs text-destructive">
                 Wybierz wartość z listy. Wpis spoza listy nie pozwoli wykonać rzutu.

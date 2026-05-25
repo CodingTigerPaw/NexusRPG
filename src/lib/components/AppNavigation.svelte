@@ -1,19 +1,18 @@
 <script lang="ts">
   import { afterNavigate, goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { onMount } from 'svelte';
+  import { onDestroy, onMount, tick } from 'svelte';
   import { Button } from '$lib/components/ui/button';
   import { appRoutes } from '$lib/modules/navigation';
-  import {
-    getCurrentUser,
-    hasRole,
-    isAuthenticated,
-    logout as logoutUser,
-    type CognitoUser
-  } from '$lib/modules/auth';
+  import { getCurrentUser } from '$lib/modules/AuthModule/user';
+  import { hasRole } from '$lib/modules/AuthModule/roles';
+  import { isAuthenticated, logout as logoutUser } from '$lib/modules/AuthModule/service';
+  import type { CognitoUser } from '$lib/modules/AuthModule/authTypes/session';
 
   let authenticated = $state(false);
   let user = $state<CognitoUser | null>(null);
+  let headerElement = $state<HTMLElement | null>(null);
+  let resizeObserver: ResizeObserver | null = null;
 
   const pathname = $derived(page.url.pathname);
   const visibleRoutes = $derived(
@@ -33,15 +32,45 @@
   function refreshAuthState() {
     authenticated = isAuthenticated();
     user = authenticated ? getCurrentUser() : null;
+    scheduleNavigationHeightSync();
   }
 
   onMount(() => {
     refreshAuthState();
   });
 
+  onDestroy(() => {
+    resizeObserver?.disconnect();
+    document.documentElement.style.removeProperty('--app-navigation-height');
+  });
+
   afterNavigate(() => {
     refreshAuthState();
   });
+
+  function setNavigationHeight(height: number) {
+    document.documentElement.style.setProperty('--app-navigation-height', `${Math.ceil(height)}px`);
+  }
+
+  function syncNavigationHeight() {
+    resizeObserver?.disconnect();
+    resizeObserver = null;
+
+    if (!authenticated || !headerElement) {
+      setNavigationHeight(0);
+      return;
+    }
+
+    setNavigationHeight(headerElement.getBoundingClientRect().height);
+    resizeObserver = new ResizeObserver(([entry]) => {
+      setNavigationHeight(entry.contentRect.height);
+    });
+    resizeObserver.observe(headerElement);
+  }
+
+  function scheduleNavigationHeightSync() {
+    void tick().then(syncNavigationHeight);
+  }
 
   async function logout() {
     try {
@@ -56,9 +85,9 @@
 </script>
 
 {#if authenticated}
-  <header class="sticky top-0 z-30 border-b bg-background/90 backdrop-blur">
+  <header bind:this={headerElement} class="sticky top-0 z-30 border-b bg-background/90 backdrop-blur">
     <div class="mx-auto flex min-h-14 w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-2">
-      <a class="font-serif text-lg font-semibold tracking-normal text-foreground" href="/profile">
+      <a class="app-title-brand text-xl tracking-normal text-foreground" href="/profile">
         Nexus RPG
       </a>
 

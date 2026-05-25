@@ -1,37 +1,14 @@
 import { env } from '$env/dynamic/public';
+import { restEndpoints } from './rest-endpoints';
 
 const viteEnv = import.meta.env as Record<string, string | undefined>;
-
-export const loginAPI =
-  env.PUBLIC_AUTH_LOGIN_URL ??
+const defaultLoginAPI =
   'https://1n7cbh8yak.execute-api.eu-central-1.amazonaws.com/auth/login';
 
-export const newPasswordChallengeAPI =
-  env.PUBLIC_AUTH_NEW_PASSWORD_URL ?? loginAPI;
-
-export const refreshAPI =
-  env.PUBLIC_AUTH_REFRESH_URL ??
-  loginAPI.replace(/\/auth\/login$/, '/auth/refresh');
-
-export const logoutAPI =
-  env.PUBLIC_AUTH_LOGOUT_URL ??
-  loginAPI.replace(/\/auth\/login$/, '/auth/logout');
-
-export const charactersAPI =
-  env.PUBLIC_CHARACTERS_URL ??
-  loginAPI.replace(/\/auth\/login$/, '/character-sheets');
-
-export const usersAPI =
-  env.PUBLIC_USERS_URL ??
-  loginAPI.replace(/\/auth\/login$/, '/users');
-
-export const rpgSessionsAPI =
-  env.PUBLIC_RPG_SESSIONS_URL ??
-  loginAPI.replace(/\/auth\/login$/, '/rpg-sessions');
-
-const webSocketApiId = env.PUBLIC_WEBSOCKET_API_ID;
-const webSocketRegion = env.PUBLIC_AWS_REGION ?? 'eu-central-1';
-const webSocketStage = env.PUBLIC_WEBSOCKET_STAGE ?? 'dev';
+type RestEndpointConfig = {
+  configuredUrl?: string;
+  fallbackPath: string;
+};
 
 function readConfiguredValue(value: string | undefined) {
   const trimmedValue = value?.trim();
@@ -43,12 +20,47 @@ function readConfiguredValue(value: string | undefined) {
   return trimmedValue;
 }
 
+function getRestApiBaseUrl(loginUrl: string) {
+  return loginUrl.replace(/\/auth\/login$/, '');
+}
+
+function buildRestEndpoint(path: string) {
+  return `${restApiBaseUrl}/${path.replace(/^\//, '')}`;
+}
+
+function resolveRestEndpoint({ configuredUrl, fallbackPath }: RestEndpointConfig) {
+  return readConfiguredValue(configuredUrl) ?? buildRestEndpoint(fallbackPath);
+}
+
+function firstConfiguredValue(...values: Array<string | undefined>) {
+  return values.map(readConfiguredValue).find(Boolean);
+}
+
+export const loginAPI = readConfiguredValue(env.PUBLIC_AUTH_LOGIN_URL) ?? defaultLoginAPI;
+const restApiBaseUrl = getRestApiBaseUrl(loginAPI);
+
+export const newPasswordChallengeAPI =
+  readConfiguredValue(env.PUBLIC_AUTH_NEW_PASSWORD_URL) ?? loginAPI;
+
+export const refreshAPI = resolveRestEndpoint(restEndpoints.refresh);
+export const logoutAPI = resolveRestEndpoint(restEndpoints.logout);
+export const charactersAPI = resolveRestEndpoint(restEndpoints.characters);
+export const usersAPI = resolveRestEndpoint(restEndpoints.users);
+export const rpgSessionsAPI = resolveRestEndpoint(restEndpoints.rpgSessions);
+export const mapAssetsAPI = resolveRestEndpoint(restEndpoints.mapAssets);
+
+const webSocketApiId = env.PUBLIC_WEBSOCKET_API_ID;
+const webSocketRegion = env.PUBLIC_AWS_REGION ?? 'eu-central-1';
+const webSocketStage = env.PUBLIC_WEBSOCKET_STAGE ?? 'dev';
+
 const configuredWebSocketApiId = readConfiguredValue(webSocketApiId);
 
 export const webSocketAPI =
-  readConfiguredValue(env.PUBLIC_WEBSOCKET_URL) ??
-  readConfiguredValue(env.PUBLIC_WS_API_URL) ??
-  readConfiguredValue(viteEnv.VITE_WS_API_URL) ??
+  firstConfiguredValue(
+    env.PUBLIC_WEBSOCKET_URL,
+    env.PUBLIC_WS_API_URL,
+    viteEnv.VITE_WS_API_URL
+  ) ??
   (configuredWebSocketApiId
     ? `wss://${configuredWebSocketApiId}.execute-api.${webSocketRegion}.amazonaws.com/${webSocketStage}`
     : '');

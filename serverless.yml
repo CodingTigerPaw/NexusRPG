@@ -1,6 +1,6 @@
+org: codingtigerpaw
+app: nexus-rpg
 service: nexus-rpg-frontend
-
-frameworkVersion: '4'
 
 provider:
   name: aws
@@ -23,7 +23,7 @@ custom:
   cloudfrontInvalidate:
     - distributionIdKey: CloudFrontDistributionId
       items:
-        - '/*'
+        - "/*"
 
 resources:
   Resources:
@@ -42,24 +42,24 @@ resources:
       Properties:
         Bucket: !Ref FrontendBucket
         PolicyDocument:
-          Version: '2012-10-17'
+          Version: "2012-10-17"
           Statement:
             - Sid: AllowCloudFrontRead
               Effect: Allow
               Principal:
                 Service: cloudfront.amazonaws.com
               Action: s3:GetObject
-              Resource: !Sub '${FrontendBucket.Arn}/*'
+              Resource: !Sub "${FrontendBucket.Arn}/*"
               Condition:
                 StringEquals:
-                  AWS:SourceArn: !Sub 'arn:aws:cloudfront::${AWS::AccountId}:distribution/${FrontendDistribution}'
+                  AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${FrontendDistribution}"
 
     FrontendOriginAccessControl:
       Type: AWS::CloudFront::OriginAccessControl
       Properties:
         OriginAccessControlConfig:
-          Name: !Sub '${AWS::StackName}-oac'
-          Description: !Sub 'Origin access control for ${AWS::StackName}'
+          Name: !Sub "${AWS::StackName}-oac"
+          Description: !Sub "Origin access control for ${AWS::StackName}"
           OriginAccessControlOriginType: s3
           SigningBehavior: always
           SigningProtocol: sigv4
@@ -69,7 +69,7 @@ resources:
       Properties:
         DistributionConfig:
           Enabled: true
-          Comment: !Sub '${AWS::StackName} frontend'
+          Comment: !Sub "${AWS::StackName} frontend"
           HttpVersion: http2
           IPV6Enabled: true
           DefaultRootObject: index.html
@@ -79,7 +79,7 @@ resources:
             - Id: FrontendS3Origin
               DomainName: !GetAtt FrontendBucket.RegionalDomainName
               S3OriginConfig:
-                OriginAccessIdentity: ''
+                OriginAccessIdentity: ""
               OriginAccessControlId: !Ref FrontendOriginAccessControl
 
           DefaultCacheBehavior:
@@ -116,4 +116,4 @@ resources:
       Value: !Ref FrontendDistribution
 
     CloudFrontUrl:
-      Value: !Sub 'https://${FrontendDistribution.DomainName}'
+      Value: !Sub "https://${FrontendDistribution.DomainName}"

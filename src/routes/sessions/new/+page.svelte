@@ -12,7 +12,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { Textarea } from '$lib/components/ui/textarea';
-  import { getCurrentUser } from '$lib/modules/auth';
+  import { getCurrentUser } from '$lib/modules/AuthModule/user';
   import { getUserCharacters, type CharacterCard } from '$lib/modules/characters';
   import { appRoles } from '$lib/modules/navigation';
   import {

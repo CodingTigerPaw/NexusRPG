@@ -7,8 +7,8 @@
     CardHeader,
     CardTitle
   } from '$lib/components/ui/card';
-  import type { CharacterCard } from '$lib/features/characters/types';
-  import type { RpgSession } from '../types';
+  import type { CharacterCard } from '$lib/modules/charactersModule/charactersTypes';
+  import type { RpgSession } from '$lib/modules/rpg-sessions';
   import {type AppUser } from '$lib/modules/users/userType';
 
   type Props = {

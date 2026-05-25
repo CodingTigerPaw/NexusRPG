@@ -8,28 +8,28 @@ const cocDerivedStats = [
     label: 'Idea',
     calculator: 'cocIdea',
     fallback: '0',
-    format: 'number'
+    format: 'percentage'
   },
   {
     id: 'know',
     label: 'Know',
     calculator: 'cocKnow',
     fallback: '0',
-    format: 'number'
+    format: 'percentage'
   },
   {
     id: 'luck',
     label: 'Luck',
     calculator: 'cocLuck',
     fallback: '0',
-    format: 'number'
+    format: 'percentage'
   },
   {
     id: 'sanity',
     label: 'Sanity',
     calculator: 'cocSanity',
     fallback: '0',
-    format: 'number'
+    format: 'percentage'
   },
   {
     id: 'magicPoints',
@@ -53,12 +53,18 @@ const cocDerivedStats = [
   }
 ] as const;
 
+const cocDerivedCurrentValuePaths: Partial<Record<(typeof cocDerivedStats)[number]['id'], string>> = {
+  hitPoints: 'characteristics.hitPoints',
+  luck: 'skills.Luck',
+  sanity: 'characteristics.sanity'
+};
+
 function fieldsFromKeys(keys: readonly string[], pathPrefix: string) {
   return keys.map((key) => ({
     label: key,
     path: `${pathPrefix}.${key}`,
     fallback: '0',
-    format: 'number' as const
+    format: 'percentage' as const
   }));
 }
 
@@ -73,6 +79,7 @@ function derivedFieldsFromIds(ids: readonly (typeof cocDerivedStats)[number]['id
 
     return {
       label: stat.label,
+      path: cocDerivedCurrentValuePaths[id],
       derivedStat: id,
       fallback: stat.fallback,
       format: 'format' in stat ? stat.format : undefined
@@ -167,26 +174,26 @@ export const callOfCthulhuSheetDefinition = {
           title: 'Pakiet umiejetnosci',
           columns: 3,
           fields: [
-            { label: 'Accounting', path: 'skills.Accounting', fallback: '0', format: 'number' },
-            { label: 'Anthropology', path: 'skills.Anthropology', fallback: '0', format: 'number' },
-            { label: 'Archaeology', path: 'skills.Archaeology', fallback: '0', format: 'number' },
-            { label: 'Charm', path: 'skills.Charm', fallback: '0', format: 'number' },
-            { label: 'Credit Rating', path: 'skills.Credit Rating', fallback: '0', format: 'number' },
-            { label: 'Disguise', path: 'skills.Disguise', fallback: '0', format: 'number' },
-            { label: 'Drive Auto', path: 'skills.Drive Auto', fallback: '0', format: 'number' },
-            { label: 'Fast Talk', path: 'skills.Fast Talk', fallback: '0', format: 'number' },
-            { label: 'First Aid', path: 'skills.First Aid', fallback: '0', format: 'number' },
-            { label: 'History', path: 'skills.History', fallback: '0', format: 'number' },
-            { label: 'Library Use', path: 'skills.Library Use', fallback: '0', format: 'number' },
-            { label: 'Listen', path: 'skills.Listen', fallback: '0', format: 'number' },
-            { label: 'Medicine', path: 'skills.Medicine', fallback: '0', format: 'number' },
-            { label: 'Occult', path: 'skills.Occult', fallback: '0', format: 'number' },
-            { label: 'Persuade', path: 'skills.Persuade', fallback: '0', format: 'number' },
-            { label: 'Psychology', path: 'skills.Psychology', fallback: '0', format: 'number' },
-            { label: 'Science', path: 'skills.Science', fallback: '0', format: 'number' },
-            { label: 'Spot Hidden', path: 'skills.Spot Hidden', fallback: '0', format: 'number' },
-            { label: 'Stealth', path: 'skills.Stealth', fallback: '0', format: 'number' },
-            { label: 'Survival', path: 'skills.Survival', fallback: '0', format: 'number' }
+            { label: 'Accounting', path: 'skills.Accounting', fallback: '0', format: 'percentage' },
+            { label: 'Anthropology', path: 'skills.Anthropology', fallback: '0', format: 'percentage' },
+            { label: 'Archaeology', path: 'skills.Archaeology', fallback: '0', format: 'percentage' },
+            { label: 'Charm', path: 'skills.Charm', fallback: '0', format: 'percentage' },
+            { label: 'Credit Rating', path: 'skills.Credit Rating', fallback: '0', format: 'percentage' },
+            { label: 'Disguise', path: 'skills.Disguise', fallback: '0', format: 'percentage' },
+            { label: 'Drive Auto', path: 'skills.Drive Auto', fallback: '0', format: 'percentage' },
+            { label: 'Fast Talk', path: 'skills.Fast Talk', fallback: '0', format: 'percentage' },
+            { label: 'First Aid', path: 'skills.First Aid', fallback: '0', format: 'percentage' },
+            { label: 'History', path: 'skills.History', fallback: '0', format: 'percentage' },
+            { label: 'Library Use', path: 'skills.Library Use', fallback: '0', format: 'percentage' },
+            { label: 'Listen', path: 'skills.Listen', fallback: '0', format: 'percentage' },
+            { label: 'Medicine', path: 'skills.Medicine', fallback: '0', format: 'percentage' },
+            { label: 'Occult', path: 'skills.Occult', fallback: '0', format: 'percentage' },
+            { label: 'Persuade', path: 'skills.Persuade', fallback: '0', format: 'percentage' },
+            { label: 'Psychology', path: 'skills.Psychology', fallback: '0', format: 'percentage' },
+            { label: 'Science', path: 'skills.Science', fallback: '0', format: 'percentage' },
+            { label: 'Spot Hidden', path: 'skills.Spot Hidden', fallback: '0', format: 'percentage' },
+            { label: 'Stealth', path: 'skills.Stealth', fallback: '0', format: 'percentage' },
+            { label: 'Survival', path: 'skills.Survival', fallback: '0', format: 'percentage' }
           ]
         }
       ]

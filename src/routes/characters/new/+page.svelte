@@ -13,7 +13,7 @@
   import { Input } from '$lib/components/ui/input';
   import { Label } from '$lib/components/ui/label';
   import { Textarea } from '$lib/components/ui/textarea';
-  import { getCurrentUser } from '$lib/modules/auth';
+  import { getCurrentUser } from '$lib/modules/AuthModule/user';
   import {
     calculateCoCDerivedStats,
     calculateVtmDerivedStats,
@@ -121,8 +121,15 @@
       return;
     }
 
-    currentDraftId = saveCharacterDraft(userId, draft, currentDraftId);
-    savedMessage = 'Szkic zapisany lokalnie. Możesz wrócić do niego później.';
+    try {
+      currentDraftId = saveCharacterDraft(userId, draft, currentDraftId);
+      savedMessage = 'Szkic zapisany lokalnie. Możesz wrócić do niego później.';
+      errorMessage = '';
+    } catch (error) {
+      savedMessage = '';
+      errorMessage =
+        error instanceof Error ? error.message : 'Nie udało się zapisać szkicu postaci.';
+    }
   }
 
   function mutateDraft(mutator: (builder: { setField: Function; setRecordValue: Function; randomize: Function; snapshot: Function }) => void) {

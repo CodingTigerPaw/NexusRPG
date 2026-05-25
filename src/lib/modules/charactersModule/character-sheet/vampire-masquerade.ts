@@ -97,7 +97,7 @@ export const vampireMasqueradeSheetDefinition = {
   sections: [
     {
       id: "identity",
-      title: "Tozsamosc",
+      title: "Podstawowe",
       groups: [
         {
           id: "basic",
@@ -167,7 +167,7 @@ export const vampireMasqueradeSheetDefinition = {
     },
     {
       id: "bloodParameters",
-      title: "Parametry krwi i statystyki pochodne",
+      title: "Pochodne",
       groups: [
         {
           id: "derived",
@@ -182,24 +182,28 @@ export const vampireMasqueradeSheetDefinition = {
             },
             {
               label: "Człowieczeństwo",
+              path: "characteristics.humanity",
               derivedStat: "humanity",
               fallback: "0",
               format: "number",
             },
             {
               label: "Siła woli",
+              path: "characteristics.willpower",
               derivedStat: "willpower",
               fallback: "0",
               format: "number",
             },
             {
               label: "Punkty życia",
+              path: "characteristics.health",
               derivedStat: "health",
               fallback: "3",
               format: "number",
             },
             {
               label: "Blood Pool",
+              path: "characteristics.bloodPool",
               derivedStat: "bloodPool",
               fallback: "10",
               format: "number",

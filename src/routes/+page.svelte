@@ -5,9 +5,9 @@
   import {
     completeNewPasswordChallenge,
     isAuthenticated,
-    login,
-    type NewPasswordRequiredResult
-  } from '$lib/modules/auth';
+    login
+  } from '$lib/modules/AuthModule/service';
+  import type { NewPasswordRequiredResult } from '$lib/modules/AuthModule/authTypes/results';
   import { Button } from '$lib/components/ui/button';
   import {
     Card,

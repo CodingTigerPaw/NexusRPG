@@ -1,8 +1,10 @@
 import type { CharacterCard } from '$lib/modules/characters';
+import type { CharacterNote } from '../notes';
 
 export type CharacterSheetValueFormat =
   | 'text'
   | 'number'
+  | 'percentage'
   | 'list'
   | 'longText'
   | 'namedDescriptions'
@@ -50,6 +52,7 @@ export type CharacterSheetDefinition = {
 
 export type ResolvedCharacterSheetField = CharacterSheetFieldDefinition & {
   value: string;
+  maxValue?: string;
 };
 
 export type ResolvedCharacterSheetGroup = Omit<CharacterSheetGroupDefinition, 'fields'> & {
@@ -63,6 +66,7 @@ export type ResolvedCharacterSheetSection = Omit<CharacterSheetSectionDefinition
 export type ResolvedCharacterSheet = Omit<CharacterSheetDefinition, 'matches' | 'sections'> & {
   characterName: string;
   avatarUrl?: string | null;
+  notes: CharacterNote[];
   derivedStats: ResolvedCharacterSheetField[];
   sections: ResolvedCharacterSheetSection[];
 };

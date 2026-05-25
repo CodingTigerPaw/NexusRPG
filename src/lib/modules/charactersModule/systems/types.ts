@@ -5,7 +5,7 @@ import type {
 } from "../character-builder/types";
 import type { CharacterSheetCalculator } from "../character-sheet/mechanics";
 import type { CharacterSheetDefinition } from "../character-sheet/types";
-import type { CharacterCard } from "$lib/modules/charactersTypes";
+import type { CharacterCard } from "$lib/modules/charactersModule/charactersTypes";
 import type {
   DiceRollMechanicsResult,
   DiceRollResult,

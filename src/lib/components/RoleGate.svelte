@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import { onMount } from 'svelte';
-  import { hasRole } from '$lib/modules/auth';
+  import { hasRole } from '$lib/modules/AuthModule/roles';
 
   type Props = {
     roles: string | string[];

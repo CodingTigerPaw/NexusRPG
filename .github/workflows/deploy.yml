@@ -43,9 +43,13 @@ jobs:
       - name: Type and Svelte check
         run: npm run check
 
+      - name: Tests
+        run: npm run test
+
       - name: Build
         run: npm run build
         env:
+          PUBLIC_APP_ENV: dev
           PUBLIC_AUTH_LOGIN_URL: ${{ vars.PUBLIC_AUTH_LOGIN_URL }}
           PUBLIC_AUTH_NEW_PASSWORD_URL: ${{ vars.PUBLIC_AUTH_NEW_PASSWORD_URL }}
           PUBLIC_AUTH_REFRESH_URL: ${{ vars.PUBLIC_AUTH_REFRESH_URL }}
@@ -53,6 +57,7 @@ jobs:
           PUBLIC_CHARACTERS_URL: ${{ vars.PUBLIC_CHARACTERS_URL }}
           PUBLIC_USERS_URL: ${{ vars.PUBLIC_USERS_URL }}
           PUBLIC_RPG_SESSIONS_URL: ${{ vars.PUBLIC_RPG_SESSIONS_URL }}
+          PUBLIC_MAP_ASSETS_URL: ${{ vars.PUBLIC_MAP_ASSETS_URL }}
           PUBLIC_AWS_REGION: ${{ vars.PUBLIC_AWS_REGION }}
           PUBLIC_WEBSOCKET_STAGE: ${{ vars.PUBLIC_WEBSOCKET_STAGE }}
           PUBLIC_WEBSOCKET_API_ID: ${{ vars.PUBLIC_WEBSOCKET_API_ID }}
@@ -62,7 +67,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION || 'eu-central-1' }}
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
@@ -93,9 +98,13 @@ jobs:
       - name: Type and Svelte check
         run: npm run check
 
+      - name: Tests
+        run: npm run test
+
       - name: Build
         run: npm run build
         env:
+          PUBLIC_APP_ENV: stable
           PUBLIC_AUTH_LOGIN_URL: ${{ vars.PUBLIC_AUTH_LOGIN_URL }}
           PUBLIC_AUTH_NEW_PASSWORD_URL: ${{ vars.PUBLIC_AUTH_NEW_PASSWORD_URL }}
           PUBLIC_AUTH_REFRESH_URL: ${{ vars.PUBLIC_AUTH_REFRESH_URL }}
@@ -103,6 +112,7 @@ jobs:
           PUBLIC_CHARACTERS_URL: ${{ vars.PUBLIC_CHARACTERS_URL }}
           PUBLIC_USERS_URL: ${{ vars.PUBLIC_USERS_URL }}
           PUBLIC_RPG_SESSIONS_URL: ${{ vars.PUBLIC_RPG_SESSIONS_URL }}
+          PUBLIC_MAP_ASSETS_URL: ${{ vars.PUBLIC_MAP_ASSETS_URL }}
           PUBLIC_AWS_REGION: ${{ vars.PUBLIC_AWS_REGION }}
           PUBLIC_WEBSOCKET_STAGE: ${{ vars.PUBLIC_WEBSOCKET_STAGE }}
           PUBLIC_WEBSOCKET_API_ID: ${{ vars.PUBLIC_WEBSOCKET_API_ID }}
@@ -112,7 +122,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION || 'eu-central-1' }}
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 

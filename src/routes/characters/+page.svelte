@@ -9,7 +9,8 @@
     CardTitle
   } from '$lib/components/ui/card';
   import { Button } from '$lib/components/ui/button';
-  import { getCurrentUser } from '$lib/modules/auth';
+  import { Spinner } from '$lib/components/ui/spinner';
+  import { getCurrentUser } from '$lib/modules/AuthModule/user';
   import { hasCharacterDrafts } from '$lib/modules/charactersModule/character-builder';
   import { getCharacters, type CharacterCard } from '$lib/modules/characters';
   import { formatRpgSessionName, getRpgSessions } from '$lib/modules/rpg-sessions';
@@ -19,6 +20,7 @@
   let isLoading = $state(true);
   let isLoadingMore = $state(false);
   let errorMessage = $state('');
+  let loadMoreErrorMessage = $state('');
   let nextCursor = $state<string | null>(null);
   let hasDraft = $state(false);
   let sessionNamesById = $state<Record<string, string>>({});
@@ -66,7 +68,7 @@
       return;
     }
 
-    errorMessage = '';
+    loadMoreErrorMessage = '';
     isLoadingMore = true;
 
     try {
@@ -74,7 +76,7 @@
       characters = [...characters, ...response.characterSheets];
       nextCursor = response.nextCursor;
     } catch (error) {
-      errorMessage =
+      loadMoreErrorMessage =
         error instanceof Error ? error.message : 'Nie udało się pobrać kolejnej strony kart.';
     } finally {
       isLoadingMore = false;
@@ -128,11 +130,12 @@
     </div>
 
     {#if isLoading}
-      <Card class="border-border/80 bg-card/95">
-        <CardContent class="p-6">
+      <div class="flex justify-center py-8">
+        <div class="flex items-center gap-3">
+          <Spinner size="sm" label="Pobieranie kart postaci..." />
           <p class="text-sm text-muted-foreground">Pobieranie kart postaci...</p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     {:else if errorMessage}
       <Card class="border-destructive/40 bg-destructive/10">
         <CardContent class="p-6">
@@ -146,6 +149,14 @@
         </CardContent>
       </Card>
     {:else}
+      {#if loadMoreErrorMessage}
+        <Card class="border-destructive/40 bg-destructive/10">
+          <CardContent class="p-4">
+            <p class="text-sm text-destructive-foreground">{loadMoreErrorMessage}</p>
+          </CardContent>
+        </Card>
+      {/if}
+
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {#each characters as character (character.characterId)}
           <button
@@ -204,7 +215,12 @@
       {#if nextCursor}
         <div class="flex justify-center">
           <Button type="button" variant="secondary" disabled={isLoadingMore} onclick={loadMore}>
-            {isLoadingMore ? 'Pobieranie...' : 'Pokaż więcej'}
+            {#if isLoadingMore}
+              <Spinner size="sm" class="mr-2 text-secondary-foreground" label="Pobieranie kolejnych postaci..." />
+              Pobieranie...
+            {:else}
+              Pokaż więcej
+            {/if}
           </Button>
         </div>
       {/if}

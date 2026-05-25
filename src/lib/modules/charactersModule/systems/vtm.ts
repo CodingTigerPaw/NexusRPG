@@ -13,7 +13,7 @@ import {
   calculateVtmV5Willpower,
 } from "../character-sheet/mechanics";
 import { vtmStrategy } from "../character-builder/strategies/vtm";
-import type { CharacterCard } from "$lib/modules/charactersTypes";
+import type { CharacterCard } from "$lib/modules/charactersModule/charactersTypes";
 import {
   vtmAbilityGroups,
   vtmAttributeGroups,

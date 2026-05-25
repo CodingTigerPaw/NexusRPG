@@ -1,8 +1,8 @@
-import type { CharacterCard } from "$lib/features/characters/types";
-import { getUserCharacters } from "$lib/features/characters/api";
+import type { CharacterCard } from "$lib/modules/charactersModule/charactersTypes";
+import { getUserCharacters } from "$lib/modules/characters";
 import { type AppUser } from "$lib/modules/users/userType";
 import { getUsers } from "$lib/modules/users/users";
-import type { RpgSession, RpgSessionParticipant } from "../types";
+import type { RpgSession, RpgSessionParticipant } from "$lib/modules/rpg-sessions";
 
 export function participantKey(userId: string, characterId: string) {
   return `${userId}:${characterId}`;

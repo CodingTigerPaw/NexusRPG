@@ -5,7 +5,7 @@
     CardHeader,
     CardTitle
   } from '$lib/components/ui/card';
-  import type { RpgSession } from '../types';
+  import type { RpgSession } from '$lib/modules/rpg-sessions';
 
   type Props = {
     session: RpgSession;
