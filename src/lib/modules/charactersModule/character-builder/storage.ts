@@ -31,7 +31,11 @@ function readStoredDrafts(userId: string) {
     return [] as SavedCharacterDraft[];
   }
 
-  return parseDraftCollection(localStorage.getItem(draftsStorageKey(userId)));
+  try {
+    return parseDraftCollection(localStorage.getItem(draftsStorageKey(userId)));
+  } catch {
+    return [] as SavedCharacterDraft[];
+  }
 }
 
 function writeStoredDrafts(userId: string, drafts: SavedCharacterDraft[]) {
@@ -39,7 +43,11 @@ function writeStoredDrafts(userId: string, drafts: SavedCharacterDraft[]) {
     return;
   }
 
-  localStorage.setItem(draftsStorageKey(userId), JSON.stringify(drafts));
+  try {
+    localStorage.setItem(draftsStorageKey(userId), JSON.stringify(drafts));
+  } catch {
+    throw new Error('Nie udało się zapisać szkicu postaci w localStorage.');
+  }
 }
 
 function createDraftId() {

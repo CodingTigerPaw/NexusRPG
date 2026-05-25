@@ -20,6 +20,7 @@
   let isLoading = $state(true);
   let isLoadingMore = $state(false);
   let errorMessage = $state('');
+  let loadMoreErrorMessage = $state('');
   let nextCursor = $state<string | null>(null);
   let hasDraft = $state(false);
   let sessionNamesById = $state<Record<string, string>>({});
@@ -67,7 +68,7 @@
       return;
     }
 
-    errorMessage = '';
+    loadMoreErrorMessage = '';
     isLoadingMore = true;
 
     try {
@@ -75,7 +76,7 @@
       characters = [...characters, ...response.characterSheets];
       nextCursor = response.nextCursor;
     } catch (error) {
-      errorMessage =
+      loadMoreErrorMessage =
         error instanceof Error ? error.message : 'Nie udało się pobrać kolejnej strony kart.';
     } finally {
       isLoadingMore = false;
@@ -148,6 +149,14 @@
         </CardContent>
       </Card>
     {:else}
+      {#if loadMoreErrorMessage}
+        <Card class="border-destructive/40 bg-destructive/10">
+          <CardContent class="p-4">
+            <p class="text-sm text-destructive-foreground">{loadMoreErrorMessage}</p>
+          </CardContent>
+        </Card>
+      {/if}
+
       <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {#each characters as character (character.characterId)}
           <button

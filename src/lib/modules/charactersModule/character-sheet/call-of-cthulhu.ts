@@ -53,6 +53,12 @@ const cocDerivedStats = [
   }
 ] as const;
 
+const cocDerivedCurrentValuePaths: Partial<Record<(typeof cocDerivedStats)[number]['id'], string>> = {
+  hitPoints: 'characteristics.hitPoints',
+  luck: 'skills.Luck',
+  sanity: 'characteristics.sanity'
+};
+
 function fieldsFromKeys(keys: readonly string[], pathPrefix: string) {
   return keys.map((key) => ({
     label: key,
@@ -73,6 +79,7 @@ function derivedFieldsFromIds(ids: readonly (typeof cocDerivedStats)[number]['id
 
     return {
       label: stat.label,
+      path: cocDerivedCurrentValuePaths[id],
       derivedStat: id,
       fallback: stat.fallback,
       format: 'format' in stat ? stat.format : undefined

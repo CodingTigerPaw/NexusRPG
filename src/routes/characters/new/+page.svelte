@@ -121,8 +121,15 @@
       return;
     }
 
-    currentDraftId = saveCharacterDraft(userId, draft, currentDraftId);
-    savedMessage = 'Szkic zapisany lokalnie. Możesz wrócić do niego później.';
+    try {
+      currentDraftId = saveCharacterDraft(userId, draft, currentDraftId);
+      savedMessage = 'Szkic zapisany lokalnie. Możesz wrócić do niego później.';
+      errorMessage = '';
+    } catch (error) {
+      savedMessage = '';
+      errorMessage =
+        error instanceof Error ? error.message : 'Nie udało się zapisać szkicu postaci.';
+    }
   }
 
   function mutateDraft(mutator: (builder: { setField: Function; setRecordValue: Function; randomize: Function; snapshot: Function }) => void) {

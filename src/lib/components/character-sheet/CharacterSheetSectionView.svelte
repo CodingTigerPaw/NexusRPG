@@ -42,7 +42,10 @@
     return isDerivedResource(field) || field.path === 'characteristics.hunger';
   }
 
-  function resourceDotCount(field: { derivedStat?: string; path?: string }, value: string) {
+  function resourceDotCount(
+    field: { derivedStat?: string; path?: string; maxValue?: string },
+    value: string
+  ) {
     if (field.path === 'characteristics.hunger') {
       return 5;
     }
@@ -51,11 +54,13 @@
       return 10;
     }
 
+    const maxValue = field.maxValue ?? value;
+
     if (field.derivedStat === 'bloodPool') {
-      return Math.max(1, resourceValue(value));
+      return Math.max(1, resourceValue(maxValue));
     }
 
-    return Math.max(1, resourceValue(value));
+    return Math.max(1, resourceValue(maxValue));
   }
 
   function resourceColorClass(field: { derivedStat?: string; path?: string }, filled: boolean) {

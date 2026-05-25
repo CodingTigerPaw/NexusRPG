@@ -52,6 +52,7 @@ export type CharacterSheetDefinition = {
 
 export type ResolvedCharacterSheetField = CharacterSheetFieldDefinition & {
   value: string;
+  maxValue?: string;
 };
 
 export type ResolvedCharacterSheetGroup = Omit<CharacterSheetGroupDefinition, 'fields'> & {

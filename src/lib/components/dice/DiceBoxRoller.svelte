@@ -14,6 +14,7 @@
     parseDiceNotation,
     REPAINT_INTERVAL_MS,
     TEXTURE_BASE_PATH,
+    randomDieValue,
     type DiceRollDieResult,
     type DiceRollResult,
     type DiceRollTerm,
@@ -518,10 +519,6 @@
       `kość percentylowa: ${tens === 0 ? '00' : String(tens)}`,
       `jedności: ${String(ones)}`
     ];
-  }
-
-  function randomDieValue(sides: number) {
-    return Math.floor(Math.random() * sides) + 1;
   }
 
   function buildDiceBoxRollPlan(parsed: DiceRollTerm[]): DiceBoxRollPlan {

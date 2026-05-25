@@ -187,7 +187,19 @@ export function parseDiceNotation(input: string) {
   };
 }
 
-function randomDieValue(sides: number) {
+export function randomDieValue(sides: number) {
+  if (globalThis.crypto?.getRandomValues) {
+    const maxUint32 = 0xffffffff;
+    const acceptedRange = Math.floor((maxUint32 + 1) / sides) * sides;
+    const buffer = new Uint32Array(1);
+
+    do {
+      globalThis.crypto.getRandomValues(buffer);
+    } while (buffer[0] >= acceptedRange);
+
+    return (buffer[0] % sides) + 1;
+  }
+
   return Math.floor(Math.random() * sides) + 1;
 }
 

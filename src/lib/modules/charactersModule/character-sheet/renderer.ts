@@ -102,6 +102,22 @@ export function resolveCharacterSheet(
     ])
   );
 
+  function resolveFieldValue(field: { path?: string; derivedStat?: string }) {
+    // Zasoby zmienne w czasie sesji mają własną wartość bieżącą pod `path`,
+    // a `derivedStat` zostaje fallbackiem dla kart sprzed wprowadzenia toolboxa.
+    const pathValue = field.path ? readPath(character, field.path) : undefined;
+
+    if (pathValue !== undefined && pathValue !== null && pathValue !== '') {
+      return pathValue;
+    }
+
+    if (field.derivedStat) {
+      return derivedValues[field.derivedStat];
+    }
+
+    return pathValue;
+  }
+
   return {
     id: definition.id,
     systemName: definition.systemName,
@@ -118,10 +134,12 @@ export function resolveCharacterSheet(
         ...group,
         fields: group.fields.map((field) => ({
           ...field,
-          value: formatValue(
-            field.derivedStat ? derivedValues[field.derivedStat] : readPath(character, field.path ?? ''),
-            field
-          )
+          value: formatValue(resolveFieldValue(field), field),
+          // Dla zasobów sesyjnych `value` oznacza stan bieżący, więc zakres kropek
+          // musi nadal pochodzić z kalkulatora bazowego parametru.
+          maxValue: field.path && field.derivedStat
+            ? formatValue(derivedValues[field.derivedStat], field)
+            : undefined
         }))
       }))
     }))

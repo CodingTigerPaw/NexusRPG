@@ -4,6 +4,7 @@
   import { onMount } from 'svelte';
   import DataDrivenCharacterSheet from '$lib/components/character-sheet/DataDrivenCharacterSheet.svelte';
   import { Button } from '$lib/components/ui/button';
+  import { Spinner } from '$lib/components/ui/spinner';
   import {
     Card,
     CardContent,
@@ -222,11 +223,12 @@
     </div>
 
     {#if isLoading}
-      <Card class="border-border/80 bg-card/95">
-        <CardContent class="p-6">
+      <div class="flex justify-center py-8">
+        <div class="flex items-center gap-3">
+          <Spinner size="sm" label="Pobieranie karty postaci..." />
           <p class="text-sm text-muted-foreground">Pobieranie karty postaci...</p>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     {:else if errorMessage}
       <Card class="border-destructive/40 bg-destructive/10">
         <CardContent class="p-6">

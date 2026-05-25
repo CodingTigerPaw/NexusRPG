@@ -87,7 +87,11 @@
     type DiceRollResult
   } from '$lib/modules/dice-roller';
   import { resolveCharacterSheet } from '$lib/modules/charactersModule/character-sheet';
-  import type { ResolvedCharacterSheetSection } from '$lib/modules/charactersModule/character-sheet/types';
+  import type {
+    ResolvedCharacterSheet,
+    ResolvedCharacterSheetField,
+    ResolvedCharacterSheetSection
+  } from '$lib/modules/charactersModule/character-sheet/types';
   import {
     getCharacterSystemDefinitionByRpgSystem,
     getCharacterSystemDefinitionForCharacter,
@@ -220,6 +224,7 @@
   const activeSheet = $derived(
     activeEntry?.character ? resolveCharacterSheet(activeEntry.character) : null
   );
+  const activeLiveSummaryFields = $derived(getLiveCharacterSummaryFields(activeSheet));
   const activeCharacterOverlaySection = $derived(
     activeSheet?.sections.find((section) => section.id === activeCharacterOverlaySectionId) ?? null
   );
@@ -807,6 +812,132 @@
     };
 
     return labels[status];
+  }
+
+  function getLiveCharacterSummaryFields(sheet: ResolvedCharacterSheet | null) {
+    if (!sheet) {
+      return [];
+    }
+
+    const wantedResources =
+      sheet.id === 'vtm'
+        ? [
+            { derivedStat: 'health' },
+            { derivedStat: 'willpower' },
+            { path: 'characteristics.hunger' },
+            { derivedStat: 'humanity' }
+          ]
+        : sheet.id === 'coc5'
+          ? [
+              { derivedStat: 'hitPoints' },
+              { derivedStat: 'sanity' },
+              { derivedStat: 'luck' },
+              { derivedStat: 'magicPoints' }
+            ]
+          : [
+              { derivedStat: 'health' },
+              { derivedStat: 'hitPoints' },
+              { derivedStat: 'willpower' },
+              { derivedStat: 'sanity' }
+            ];
+
+    return wantedResources
+      .map((resource) => findLiveCharacterSummaryField(sheet, resource))
+      .filter((field): field is ResolvedCharacterSheetField => Boolean(field));
+  }
+
+  function findLiveCharacterSummaryField(
+    sheet: ResolvedCharacterSheet,
+    resource: { derivedStat?: string; path?: string }
+  ) {
+    for (const section of sheet.sections) {
+      for (const group of section.groups) {
+        const field = group.fields.find((candidate) => {
+          if (resource.derivedStat && candidate.derivedStat === resource.derivedStat) {
+            return true;
+          }
+
+          return Boolean(resource.path && candidate.path === resource.path);
+        });
+
+        if (field) {
+          return field;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  function formatLiveCharacterSummaryValue(field: ResolvedCharacterSheetField) {
+    return field.maxValue ? `${field.value}/${field.maxValue}` : field.value;
+  }
+
+  function liveSummaryShortLabel(field: ResolvedCharacterSheetField) {
+    const labels: Record<string, string> = {
+      health: 'HP',
+      hitPoints: 'HP',
+      willpower: 'Wola',
+      sanity: 'SAN',
+      luck: 'Luck',
+      magicPoints: 'MP',
+      humanity: 'Hum',
+      bloodPool: 'Krew'
+    };
+
+    if (field.derivedStat && labels[field.derivedStat]) {
+      return labels[field.derivedStat];
+    }
+
+    if (field.path === 'characteristics.hunger') {
+      return 'Glod';
+    }
+
+    return field.label;
+  }
+
+  function liveSummaryNumericValue(value: string) {
+    const numericValue = Number(String(value).replace('%', ''));
+    return Number.isFinite(numericValue) ? Math.max(0, Math.trunc(numericValue)) : 0;
+  }
+
+  function liveSummaryPercent(field: ResolvedCharacterSheetField) {
+    const value = liveSummaryNumericValue(field.value);
+    const maxValue = field.maxValue
+      ? liveSummaryNumericValue(field.maxValue)
+      : field.value.endsWith('%')
+        ? 100
+        : value;
+
+    if (maxValue <= 0) {
+      return 0;
+    }
+
+    return Math.min(100, Math.max(0, Math.round((value / maxValue) * 100)));
+  }
+
+  function liveSummaryVisualClass(field: ResolvedCharacterSheetField) {
+    if (field.derivedStat === 'health' || field.derivedStat === 'hitPoints') {
+      return 'from-red-500 to-rose-500';
+    }
+
+    if (field.derivedStat === 'willpower' || field.derivedStat === 'magicPoints') {
+      return 'from-sky-300 to-blue-400';
+    }
+
+    if (field.derivedStat === 'sanity' || field.derivedStat === 'humanity') {
+      return 'from-emerald-300 to-teal-400';
+    }
+
+    if (field.derivedStat === 'luck') {
+      return 'from-amber-300 to-yellow-400';
+    }
+
+    if (field.path === 'characteristics.hunger') {
+      return 'from-rose-800 to-red-700';
+    }
+
+    return 'from-primary to-primary/70';
   }
 
   function shouldShowRollTotal(roll: DiceRollResult) {
@@ -2399,16 +2530,48 @@
         {/if}
 
         {#if entries.length > 0}
-          <div class="pointer-events-none absolute left-3 top-3 z-[60] w-[min(56rem,calc(100vw-10rem))]">
+          <div class="pointer-events-none absolute left-3 top-3 z-[60] w-[min(32rem,calc((100vw-10rem)/3))] min-w-[18rem] max-w-[calc(100vw-10rem)]">
             <Card class="pointer-events-auto border-border/80 bg-card/90 shadow-lg backdrop-blur">
               <CardContent class="space-y-2 p-2">
-                <div class="flex flex-wrap items-center gap-2">
-                  <div class="min-w-0 flex-1">
-                    <p class="truncate text-sm font-medium">
-                      {activeEntry?.character?.name ?? 'Postać'}
-                    </p>
-                    {#if canManageSession && activeEntry}
-                      <p class="truncate text-xs text-muted-foreground">{activeEntry.playerName}</p>
+                <div class="flex flex-wrap items-stretch gap-2">
+                  <div class="flex min-w-0 flex-1 flex-col gap-2">
+                    <div class="flex min-w-0 flex-col justify-center rounded-md border bg-background/45 px-3 py-2">
+                      <p class="truncate text-sm font-medium">
+                        {activeEntry?.character?.name ?? 'Postać'}
+                      </p>
+                      {#if canManageSession && activeEntry}
+                        <p class="truncate text-xs text-muted-foreground">{activeEntry.playerName}</p>
+                      {/if}
+                    </div>
+
+                    {#if activeLiveSummaryFields.length > 0}
+                      <div class="grid min-w-0 grid-cols-2 gap-1.5">
+                        {#each activeLiveSummaryFields as field (`${field.derivedStat ?? field.path}:${field.label}`)}
+                          <span
+                            class="flex h-12 min-w-0 flex-col justify-between rounded-md border bg-background/60 px-2 py-1.5 text-xs shadow-sm"
+                            title={`${field.label}: ${formatLiveCharacterSummaryValue(field)}`}
+                            aria-label={`${field.label}: ${formatLiveCharacterSummaryValue(field)}`}
+                          >
+                            <span class="flex items-baseline justify-between gap-1">
+                              <span class="rounded-sm border bg-card/70 px-1.5 py-0.5 text-[0.65rem] font-medium leading-none text-muted-foreground">
+                                {liveSummaryShortLabel(field)}
+                              </span>
+                              <span class="shrink-0 text-base font-semibold leading-none text-foreground">
+                                {formatLiveCharacterSummaryValue(field)}
+                              </span>
+                            </span>
+                            <span class="h-1.5 overflow-hidden rounded-full bg-muted">
+                              <span
+                                class={[
+                                  'block h-full rounded-full bg-gradient-to-r',
+                                  liveSummaryVisualClass(field)
+                                ]}
+                                style={`width: ${liveSummaryPercent(field)}%`}
+                              ></span>
+                            </span>
+                          </span>
+                        {/each}
+                      </div>
                     {/if}
                   </div>
 
